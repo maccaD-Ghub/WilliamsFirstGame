@@ -1,0 +1,1664 @@
+<title>Spellwalker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Baloo+2:wght@500;600;700;800&display=swap">
+<style>
+  :root{
+    --bg:#0b0f1a; --bg2:#131a2b; --panel:#171d33; --panel-line:#2a3355;
+    --ink:#f1f3ff; --muted:#939bc2; --accent:#8b6bff; --accent2:#5b8cff;
+    --gold:#ffc84a; --hp:#ff4d6d; --xp:#4fd1ff; --good:#4ade80;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Baloo 2','Comic Sans MS',system-ui,sans-serif;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;}
+  *{box-sizing:border-box;user-select:none;-webkit-user-select:none;}
+  h1,h2,h3,.pixel{font-family:'Press Start 2P','Courier New',monospace;}
+  #app{position:fixed;inset:0;overflow:hidden;background:var(--bg);}
+  canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;top:0;left:0;right:0;
+    padding:calc(10px + env(safe-area-inset-top,0px)) 14px 0;
+    display:flex;flex-direction:column;gap:6px;pointer-events:none;z-index:5;}
+  .hud-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .hud-card{background:rgba(23,29,51,.82);border:1px solid var(--panel-line);
+    border-radius:10px;padding:6px 10px;backdrop-filter:blur(3px);}
+  .barwrap{width:150px;height:14px;border-radius:7px;background:#0d1120;
+    border:1px solid var(--panel-line);overflow:hidden;position:relative;}
+  .barfill{height:100%;border-radius:7px 0 0 7px;transition:width .15s ease;}
+  .hp .barfill{background:linear-gradient(90deg,var(--hp),#ff8a9c);}
+  .xp .barfill{background:linear-gradient(90deg,var(--xp),#8be9ff);}
+  .barlabel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:800;color:#0b0f1a;font-variant-numeric:tabular-nums;letter-spacing:.3px;}
+  .lvl-badge{width:28px;height:28px;border-radius:8px;background:var(--gold);color:#231703;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;
+    border:1px solid #a9791a;flex:none;}
+  #worldTag{font-size:11px;color:var(--muted);font-weight:700;}
+  #worldName{font-size:13px;color:var(--gold);font-weight:800;}
+  #compassWrap{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;
+    transform:translateX(-50%);z-index:5;display:flex;flex-direction:column;align-items:center;
+    gap:4px;pointer-events:none;}
+  #compass{width:0;height:0;position:relative;border-top:11px solid transparent;border-bottom:11px solid transparent;
+    border-left:18px solid var(--gold);filter:drop-shadow(0 0 6px rgba(255,200,74,.7));
+    transition:transform .1s linear;}
+  #compass::after{content:"";position:absolute;left:11px;top:-4px;width:8px;height:8px;
+    border-radius:50%;background:#ff3b3b;box-shadow:0 0 5px rgba(255,59,59,.9);}
+  #compassLbl{font-size:9px;color:var(--gold);background:rgba(11,15,26,.7);
+    padding:3px 6px;border-radius:6px;letter-spacing:.5px;}
+
+  #pauseBtn{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));
+    right:calc(14px + env(safe-area-inset-right,0px));width:40px;height:40px;border-radius:10px;
+    border:1px solid var(--panel-line);background:rgba(23,29,51,.82);z-index:6;
+    display:flex;align-items:center;justify-content:center;gap:5px;}
+  #pauseBtn span{width:5px;height:16px;background:var(--ink);border-radius:1px;display:block;}
+  #pauseBtn[hidden]{display:none;}
+
+  #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:6;
+    background:rgba(23,29,51,.92);border:1px solid var(--gold);border-radius:10px;
+    padding:10px 16px;font-size:13px;font-weight:700;max-width:min(86vw,420px);
+    text-align:center;color:var(--gold);pointer-events:none;opacity:0;transition:opacity .3s ease;}
+  #toast.show{opacity:1;}
+
+  /* ---------- controls ---------- */
+  #joyBase{position:fixed;left:calc(22px + env(safe-area-inset-left,0px));
+    bottom:calc(22px + env(safe-area-inset-bottom,0px));width:118px;height:118px;
+    border-radius:50%;background:rgba(23,29,51,.55);border:2px solid var(--panel-line);z-index:5;touch-action:none;}
+  #joyStick{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#a58bff,var(--accent));
+    transform:translate(-50%,-50%);border:1px solid #5b3fd9;}
+  #rightControls{position:fixed;right:calc(20px + env(safe-area-inset-right,0px));
+    bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;
+    gap:14px;z-index:5;}
+  .roundbtn{width:78px;height:78px;border-radius:50%;border:2px solid #ffdd8a;
+    background:radial-gradient(circle at 35% 30%,#ffdc8f,var(--gold));color:#2a1c02;
+    font-family:'Press Start 2P',monospace;font-size:11px;font-weight:800;display:flex;
+    align-items:center;justify-content:center;touch-action:none;box-shadow:0 4px 0 #8a5f10;}
+  .roundbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a5f10;}
+  #dashBtn{width:58px;height:58px;font-size:9px;border-color:#c9b4ff;
+    background:radial-gradient(circle at 35% 30%,#c9b4ff,var(--accent));color:#160b33;
+    box-shadow:0 4px 0 #4b2fa8;}
+  #dashBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #4b2fa8;}
+  #dashBtn[hidden]{display:none;}
+  #possessBtn{width:64px;height:64px;font-size:8.5px;border-color:#b9e26a;
+    background:radial-gradient(circle at 35% 30%,#c8f27a,#84cc16);color:#1a2b02;
+    box-shadow:0 4px 0 #4c6b0a;}
+  #possessBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #4c6b0a;}
+  #possessBtn[hidden]{display:none;}
+  #shadowStepBtn{width:60px;height:60px;font-size:8px;border-color:#6d28d9;
+    background:radial-gradient(circle at 35% 30%,#4c1d95,#1e1033);color:#e9d8ff;
+    box-shadow:0 4px 0 #1e1033;}
+  #shadowStepBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #1e1033;}
+  #shadowStepBtn[hidden]{display:none;}
+  #zeusBtn{width:64px;height:64px;font-size:8px;border-color:#fde68a;
+    background:radial-gradient(circle at 35% 30%,#fef08a,#eab308);color:#2a1c02;
+    box-shadow:0 4px 0 #854d0e;}
+  #zeusBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #854d0e;}
+  #zeusBtn[hidden]{display:none;}
+  #zeusFlash{position:fixed;inset:0;background:#fef9c3;pointer-events:none;z-index:15;
+    opacity:0;transition:opacity .08s ease;}
+  #novaBtn{width:62px;height:62px;font-size:7.5px;border-color:#fbcfe8;
+    background:conic-gradient(from 0deg,#ff5b5b,#ffb454,#ffe066,#7ee787,#5bc0ff,#a78bfa,#f472b6,#ff5b5b);
+    color:#2a022f;box-shadow:0 4px 0 #831843;}
+  #novaBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #831843;}
+  #novaBtn[hidden]{display:none;}
+
+  /* ---------- overlays ---------- */
+  .overlay{position:fixed;inset:0;z-index:20;background:rgba(6,8,14,.86);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));
+    overflow:auto;}
+  .overlay[hidden]{display:none;}
+  .sheet{background:var(--panel);border:1px solid var(--panel-line);border-radius:18px;
+    padding:26px;max-width:640px;width:100%;text-align:center;}
+  .title{font-size:22px;line-height:1.5;color:var(--gold);margin:0 0 6px;
+    text-shadow:0 0 14px rgba(255,200,74,.4);}
+  .subtitle{color:var(--muted);font-size:14px;margin:0 0 22px;font-weight:600;}
+  .classGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px;}
+  @media (max-width:460px){.classGrid{grid-template-columns:1fr;}}
+  .classCard{border:2px solid var(--panel-line);border-radius:14px;padding:14px;cursor:pointer;
+    background:#10152a;text-align:left;transition:border-color .15s,transform .1s;}
+  .classCard:hover{transform:translateY(-2px);}
+  .classCard.sel{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,200,74,.25) inset;}
+  .classCard.locked{opacity:.5;cursor:default;}
+  .classCard.locked:hover{transform:none;}
+  .classCard h3{margin:0 0 4px;font-size:14px;}
+  .classCard p{margin:0;font-size:12.5px;color:var(--muted);font-weight:600;line-height:1.4;}
+  .swatch{width:16px;height:16px;border-radius:4px;display:inline-block;margin-right:8px;
+    vertical-align:middle;}
+  .tierBadge{display:inline-block;background:#0d1120;border:1px solid var(--panel-line);
+    color:var(--gold);font-family:'Press Start 2P',monospace;font-size:8px;
+    padding:3px 6px;border-radius:6px;margin-right:6px;vertical-align:middle;letter-spacing:.5px;}
+  input#nameInput{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--panel-line);
+    background:#0d1120;color:var(--ink);font-family:inherit;font-size:15px;font-weight:700;
+    margin-bottom:16px;text-align:center;}
+  .bigbtn{display:inline-block;padding:14px 26px;border-radius:12px;border:none;
+    background:linear-gradient(180deg,#9d81ff,var(--accent));color:#fff;font-weight:800;
+    font-size:15px;cursor:pointer;box-shadow:0 4px 0 #4b2fa8;}
+  .bigbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #4b2fa8;}
+  .bigbtn.secondary{background:linear-gradient(180deg,#3a4468,#252c48);box-shadow:0 4px 0 #12162a;
+    margin-top:10px;}
+  .bigbtn.secondary:active{box-shadow:0 1px 0 #12162a;}
+  .perkGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0;}
+  @media (max-width:520px){.perkGrid{grid-template-columns:1fr;}}
+  .perkCard{border-radius:14px;padding:14px 12px;background:#10152a;cursor:pointer;
+    border-left:5px solid var(--accent);text-align:left;transition:transform .1s;}
+  .perkCard:hover{transform:translateY(-2px);}
+  .perkCard h4{margin:0 0 4px;font-size:13px;}
+  .perkCard p{margin:0;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;}
+  .footnote{color:var(--muted);font-size:11.5px;margin-top:14px;font-weight:600;}
+</style>
+
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div id="hud" hidden>
+    <div class="hud-row">
+      <div class="lvl-badge" id="lvlBadge">1</div>
+      <div class="hud-card">
+        <div class="barwrap hp"><div class="barfill" id="hpFill" style="width:100%"></div>
+          <div class="barlabel" id="hpLabel">100/100</div></div>
+      </div>
+      <div class="hud-card">
+        <div class="barwrap xp"><div class="barfill" id="xpFill" style="width:0%"></div>
+          <div class="barlabel" id="xpLabel">XP 0/10</div></div>
+      </div>
+    </div>
+    <div class="hud-row">
+      <div class="hud-card"><span id="worldTag">WORLD 1</span> &nbsp; <span id="worldName">Emerald Forest</span></div>
+      <div class="hud-card" id="itemsCard" hidden>Charms: <span id="itemsLabel">0/3</span></div>
+    </div>
+  </div>
+
+  <button id="pauseBtn" hidden aria-label="Pause"><span></span><span></span></button>
+
+  <div id="compassWrap" hidden>
+    <div id="compass"></div>
+    <div id="compassLbl">BOSS THIS WAY</div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="zeusFlash"></div>
+
+  <div id="joyBase" hidden><div id="joyStick"></div></div>
+  <div id="rightControls" hidden>
+    <button id="possessBtn" class="roundbtn" hidden>POSSESS</button>
+    <button id="shadowStepBtn" class="roundbtn" hidden>SHADOW</button>
+    <button id="zeusBtn" class="roundbtn" hidden>ZEUS</button>
+    <button id="novaBtn" class="roundbtn" hidden>NOVA</button>
+    <button id="dashBtn" class="roundbtn" hidden>DASH</button>
+    <button id="atkBtn" class="roundbtn">ATK</button>
+  </div>
+
+  <!-- START SCREEN -->
+  <div class="overlay" id="startScreen">
+    <div class="sheet">
+      <h1 class="title pixel">SPELLWALKER</h1>
+      <p class="subtitle">A free-range magic adventure. Explore, cast spells, defeat monsters<br>
+        and bosses, and teleport across a whole realm of worlds.</p>
+      <input id="nameInput" maxlength="14" placeholder="Type your wizard name...">
+      <div class="classGrid" id="classGrid"></div>
+      <button class="bigbtn" id="beginBtn">Begin Adventure</button>
+      <div><button class="bigbtn secondary" id="continueBtn" hidden>Continue Saved Game</button></div>
+      <p class="footnote">Move: drag the joystick (or WASD / arrow keys) &middot; Attack: tap ATK (or spacebar / click)</p>
+    </div>
+  </div>
+
+  <!-- LEVEL UP -->
+  <div class="overlay" id="levelUpScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">LEVEL UP!</h2>
+      <p class="subtitle">Choose a new magic power</p>
+      <div class="perkGrid" id="perkGrid"></div>
+    </div>
+  </div>
+
+  <!-- WORLD CLEAR -->
+  <div class="overlay" id="worldClearScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;" id="wcTitle">WORLD CLEARED!</h2>
+      <p class="subtitle" id="wcSubtitle">Onward to the next world.</p>
+      <button class="bigbtn" id="wcContinueBtn">Continue</button>
+    </div>
+  </div>
+
+  <!-- PAUSE -->
+  <div class="overlay" id="pauseScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">PAUSED</h2>
+      <p class="subtitle" id="pauseInfo">Take a breather.</p>
+      <button class="bigbtn" id="resumeBtn">Resume</button>
+      <div><button class="bigbtn secondary" id="resetBtn">Reset Game</button></div>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div class="overlay" id="gameOverScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">KNOCKED OUT!</h2>
+      <p class="subtitle">Your progress is saved from your last world or level-up &mdash; head back to the menu.</p>
+      <button class="bigbtn" id="backToMenuBtn">Return to Menu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= utility ================= */
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function rand(a,b){return a+Math.random()*(b-a);}
+function dist(x1,y1,x2,y2){return Math.hypot(x1-x2,y1-y2);}
+function shade(hex,pct){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=clamp(Math.round(r+(pct/100)*255),0,255);
+  g=clamp(Math.round(g+(pct/100)*255),0,255);
+  b=clamp(Math.round(b+(pct/100)*255),0,255);
+  return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function saveGame(){
+  try{
+    const data={worldIndex:world.index,level:player.level,xp:player.xp,xpNext:player.xpNext,
+      maxHp:player.maxHp,cls:player.cls,name:player.name,perks:player.perksTaken,
+      dmgMult:player.dmgMult,frost:player.frost,lifesteal:player.lifesteal,hasDash:player.hasDash,
+      shieldCharges:player.shieldCharges,speedMult:player.speedMult,multishot:player.multishot,
+      poison:player.poison,minions:player.minionCount,canPossess:player.canPossess,
+      xpMult:player.xpMult,itemSlots:player.itemSlots,items:player.items,hasShadowStep:player.hasShadowStep,
+      hasZeusJudgement:player.hasZeusJudgement,atkRate:player.atkRate,hasRainbowNova:player.hasRainbowNova};
+    localStorage.setItem("spellwalker_save",JSON.stringify(data));
+  }catch(e){}
+}
+function loadSave(){
+  try{
+    const raw=localStorage.getItem("spellwalker_save");
+    return raw?JSON.parse(raw):null;
+  }catch(e){return null;}
+}
+
+/* ---- wizard unlocks: separate from the run save, so it survives resets ---- */
+function loadProgress(){
+  try{
+    const raw=localStorage.getItem("spellwalker_progress");
+    const p=raw?JSON.parse(raw):null;
+    return (p && typeof p.maxWorldReached==="number")?p.maxWorldReached:1;
+  }catch(e){return 1;}
+}
+function saveProgress(n){
+  try{ localStorage.setItem("spellwalker_progress",JSON.stringify({maxWorldReached:n})); }catch(e){}
+}
+let maxWorldReached=loadProgress();
+
+/* ================= constants ================= */
+const CLASSES=[
+  {key:"nature",name:"Nature Wizard",color:"#4ade80",unlockWorld:1,tier:"X",desc:"Living magic heals you for part of the damage you deal.",
+    apply:p=>{p.lifesteal=(p.lifesteal||0)+0.08;}},
+  {key:"ice",name:"Ice Wizard",color:"#4fd1ff",unlockWorld:1,tier:"IX",desc:"Icy spells that slow every enemy they strike.",
+    apply:p=>{p.frost=true;}},
+  {key:"fire",name:"Fire Wizard",color:"#ff6b4a",unlockWorld:1,tier:"VIII",desc:"Blazing spells that hit harder. +15% spell damage.",
+    apply:p=>{p.dmgMult=(p.dmgMult||1)+0.15;}},
+  {key:"tank",name:"Stone Tank",color:"#8a8f9e",unlockWorld:1,tier:"VII",desc:"Thick hide. +30 max HP, but a touch slower on your feet.",
+    apply:p=>{p.maxHp+=30;p.hp=p.maxHp;p.speedMult=(p.speedMult||1)*0.92;}},
+  {key:"shadow",name:"Shadow Lord",color:"#a78bfa",unlockWorld:3,tier:"VI",desc:"Starts with a Dash to teleport-blink past danger, plus Shadow Step — turn your own shadow into a duplicate that fights beside you.",
+    apply:p=>{p.hasDash=true;p.hasShadowStep=true;}},
+  {key:"priest",name:"Priest",color:"#ffd54a",unlockWorld:5,tier:"V",desc:"A holy powerhouse: a shield for your first hit, +30% XP, 2 extra spell slots to choose from at every level-up, 2 extra item slots, +60% spell damage, and +80% max HP — a massive leap in power over the low-tier wizards.",
+    apply:p=>{
+      p.shieldCharges=(p.shieldCharges||0)+1;
+      p.xpMult=(p.xpMult||1)+0.3;
+      p.itemSlots=(p.itemSlots||3)+2;
+      p.dmgMult=(p.dmgMult||1)+0.6;
+      p.maxHp=(p.maxHp||100)*1.8; p.hp=p.maxHp;
+    }},
+  {key:"parasite",name:"Parasite Wizard",color:"#84cc16",unlockWorld:7,tier:"IV",desc:"Poison spells, plus a Possess ability to take over a nearby monster's body.",
+    apply:p=>{p.poison=true;p.canPossess=true;}},
+  {key:"undead",name:"Undead King",color:"#c9d1e0",unlockWorld:10,tier:"III",
+    desc:"Raises 5 skeleton minions, doubles your max HP, a guaranteed Bone Legion spell slot at every level-up, and a bonus item slot with a guaranteed Minion Spell charm.",
+    apply:p=>{
+      p.minionCount=(p.minionCount||0)+4;
+      p.maxHp=(p.maxHp||100)*2; p.hp=p.maxHp;
+      p.itemSlots=(p.itemSlots||3)+1;
+      const ms=ITEMS.find(i=>i.key==="minionspell");
+      if(ms){ ms.apply(p); p.items.push(ms.key); }
+    }},
+  {key:"storm",name:"Storm Wizard",color:"#22d3ee",unlockWorld:15,tier:"II",desc:"Crackling storm magic — spells fire 30% faster than any other wizard's, plus Zeus's Judgement to call down a devastating lightning strike on everything nearby.",
+    apply:p=>{p.atkRate=(p.atkRate||0.42)*0.7;p.hasZeusJudgement=true;}},
+  {key:"god",name:"God Wizard",color:"#fef3c7",unlockWorld:20,tier:"I",desc:"A being of pure power: +50% spell damage, +50% max HP, +25% speed, and every ability at once — Dash, Shadow Step, and Zeus's Judgement.",
+    apply:p=>{
+      p.dmgMult=(p.dmgMult||1)+0.5;
+      p.maxHp=(p.maxHp||100)*1.5; p.hp=p.maxHp;
+      p.speedMult=(p.speedMult||1)*1.25;
+      p.hasDash=true; p.hasShadowStep=true; p.hasZeusJudgement=true;
+    }},
+  {key:"rainbow",name:"Rainbow God",color:"#f472b6",unlockWorld:25,tier:"N",desc:"A prism of pure magic: +35% spell damage, frost and poison spells, +10% lifesteal, +20% max HP, and Rainbow Nova — an ability that erupts a ring of elemental bolts in every direction.",
+    apply:p=>{
+      p.dmgMult=(p.dmgMult||1)+0.35;
+      p.frost=true; p.poison=true;
+      p.lifesteal=(p.lifesteal||0)+0.1;
+      p.maxHp=(p.maxHp||100)*1.2; p.hp=p.maxHp;
+      p.hasRainbowNova=true;
+    }}
+];
+
+const BIOMES=[
+  {name:"Emerald Forest",sky:["#173a2a","#0a1810"],ground:"#204a30",decor:"#2f7a4a",decorShape:"tree"},
+  {name:"Frozen Tundra",sky:["#1a2740","#0a1220"],ground:"#33455e",decor:"#bfe8ff",decorShape:"crystal"},
+  {name:"Volcanic Ridge",sky:["#3a1414","#140606"],ground:"#4a2418",decor:"#ff8a4a",decorShape:"rock"},
+  {name:"Coral Depths",sky:["#0d2b3a","#03121a"],ground:"#123a4a",decor:"#ff8fb0",decorShape:"coral"},
+  {name:"Candy Dunes",sky:["#3a1a3a","#180a1a"],ground:"#4a2a4a",decor:"#ffd1e8",decorShape:"swirl"},
+  {name:"Shadow Marsh",sky:["#12161a",  "#06080a"],ground:"#232b26",decor:"#7b5aa6",decorShape:"mushroom"},
+  {name:"Sky Isles",sky:["#1a2a4a","#08101c"],ground:"#2a3a5a",decor:"#eaf2ff",decorShape:"cloud"},
+  {name:"Crystal Caverns",sky:["#241a3a","#0d0818"],ground:"#34275a",decor:"#c9a8ff",decorShape:"crystal"},
+  {name:"Sunfire Desert",sky:["#3a2a14","#180f06"],ground:"#5a4222",decor:"#ffd24a",decorShape:"rock"},
+  {name:"Moonlit Ruins",sky:["#14162a","#060714"],ground:"#2a2c40",decor:"#9aa3c9",decorShape:"pillar"}
+];
+
+const PERKS=[
+  {key:"blaze",name:"Blaze Power",color:"#ff6b4a",desc:"+25% spell damage.",apply:p=>{p.dmgMult=(p.dmgMult||1)+0.25;}},
+  {key:"frost",name:"Frost Focus",color:"#4fd1ff",desc:"Your spells slow enemies they hit.",apply:p=>{p.frost=true;}},
+  {key:"growth",name:"Wild Growth",color:"#4ade80",desc:"+20 max HP and a full heal.",apply:p=>{p.maxHp+=20;p.hp=p.maxHp;}},
+  {key:"shadowstep",name:"Shadow Step",color:"#a78bfa",desc:"Unlocks a Dash to blink through danger.",apply:p=>{p.hasDash=true;}},
+  {key:"vampiric",name:"Vampiric Touch",color:"#f472b6",desc:"Heal 12% of the damage your spells deal.",apply:p=>{p.lifesteal=(p.lifesteal||0)+0.12;}},
+  {key:"guardian",name:"Guardian Aura",color:"#ffd54a",desc:"Gain a shield that blocks the next hit.",apply:p=>{p.shieldCharges=(p.shieldCharges||0)+1;}},
+  {key:"bonelegion",name:"Bone Legion",color:"#c9d1e0",desc:"Summon a loyal minion that fights beside you.",apply:p=>{p.minionCount=(p.minionCount||0)+1;}},
+  {key:"swift",name:"Swift Boots",color:"#60a5fa",desc:"+15% movement speed.",apply:p=>{p.speedMult=(p.speedMult||1)*1.15;}},
+  {key:"twincast",name:"Twin Cast",color:"#fb923c",desc:"Fire an extra spell in a spread.",apply:p=>{p.multishot=(p.multishot||1)+1;}},
+  {key:"venom",name:"Venom Mark",color:"#84cc16",desc:"Your spells poison enemies over time.",apply:p=>{p.poison=true;}}
+];
+
+const ITEMS=[
+  {key:"ruby",name:"Ruby Charm",color:"#ff6b4a",desc:"+5% spell damage.",apply:p=>{p.dmgMult=(p.dmgMult||1)+0.05;}},
+  {key:"emerald",name:"Emerald Charm",color:"#4ade80",desc:"+10 max HP.",apply:p=>{p.maxHp+=10;p.hp=Math.min(p.maxHp,p.hp+10);}},
+  {key:"sapphire",name:"Sapphire Charm",color:"#4fd1ff",desc:"+8% movement speed.",apply:p=>{p.speedMult=(p.speedMult||1)*1.08;}},
+  {key:"amber",name:"Amber Charm",color:"#f59e0b",desc:"+5% lifesteal.",apply:p=>{p.lifesteal=(p.lifesteal||0)+0.05;}},
+  {key:"minionspell",name:"Minion Spell",color:"#c9d1e0",desc:"Summons one extra minion to fight at your side.",apply:p=>{p.minionCount=(p.minionCount||0)+1;}}
+];
+
+const ENEMY_TYPES=["slime","beast","skeleton","ghost"];
+// roman-numeral power tiers for the basic monster roster, weakest (IV) to strongest (I)
+const ENEMY_TIERS={slime:"IV",beast:"III",skeleton:"II",ghost:"I"};
+// a different named boss for every world, cycling through this roster as the
+// levels climb — each one is also just plain stronger than the last (see makeEnemy).
+// tier is a fixed roman-numeral power ranking of the boss NAME itself (X weakest,
+// I strongest), and it actually multiplies the boss's stats on top of the ever-climbing
+// world-index scaling — with a huge jump from tier V upward, same as the wizard tiers.
+const BOSS_TYPES=[
+  {name:"Slime King",color:"#4ade80",shape:"slime",tier:"X"},
+  {name:"Alpha Beast",color:"#c98a52",shape:"beast",tier:"IX"},
+  {name:"Wailing Specter",color:"#b6c3ff",shape:"ghost",tier:"VIII"},
+  {name:"Bone Tyrant",color:"#e8ecf5",shape:"skeleton",tier:"VII"},
+  {name:"Venom Hydra",color:"#84cc16",shape:"beast",tier:"VI"},
+  {name:"Frost Colossus",color:"#4fd1ff",shape:"beast",tier:"V"},
+  {name:"Crimson Warlord",color:"#ff5b7a",shape:"wizard",tier:"IV"},
+  {name:"Shadow Reaper",color:"#a78bfa",shape:"ghost",tier:"III"},
+  {name:"Storm Herald",color:"#22d3ee",shape:"wizard",tier:"II"},
+  {name:"Radiant Devourer",color:"#fde68a",shape:"slime",tier:"I"}
+];
+// flipped on purpose: the low-numbered "top" tiers (I-V) stay close together,
+// while the "lower" tiers (VI-X) hit a huge power cliff and are the real threats
+const BOSS_TIER_MULT={X:4.2,IX:3.6,VIII:3.2,VII:2.8,VI:2.5,V:1.4,IV:1.3,III:1.2,II:1.1,I:1.0};
+const WORLD_W=2600, WORLD_H=1900;
+
+/* ================= state ================= */
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let DPR=Math.max(1,window.devicePixelRatio||1);
+let viewW=0, viewH=0;
+
+function resize(){
+  viewW=window.innerWidth; viewH=window.innerHeight;
+  DPR=Math.max(1,window.devicePixelRatio||1);
+  canvas.width=Math.round(viewW*DPR);
+  canvas.height=Math.round(viewH*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.imageSmoothingEnabled=false;
+}
+window.addEventListener("resize",resize);
+resize();
+
+const keys={};
+const joy={active:false,dx:0,dy:0,id:null};
+const mouse={x:0,y:0,down:false};
+let mode="start"; // start | playing | levelup | worldclear | gameover | paused
+let lastTime=performance.now();
+let animT=0;
+let zeusFlashT=0; // countdown for the Zeus's Judgement screen flash
+
+const player={
+  x:WORLD_W/2,y:WORLD_H/2,r:16,facing:0,
+  hp:100,maxHp:100,level:1,xp:0,xpNext:10,
+  speed:190,speedMult:1,atkRate:0.42,atkCd:0,
+  baseDamage:14,dmgMult:1,projSpeed:440,projRadius:6,
+  cls:"fire",color:"#ff6b4a",name:"William",
+  frost:false,lifesteal:0,hasDash:false,dashCd:0,dashTimeLeft:0,
+  shieldCharges:0,multishot:1,poison:false,minionCount:0,
+  invuln:0,perksTaken:[],facingLocked:false,
+  canPossess:false,possessing:null,possessCd:0,hostStats:null,
+  xpMult:1,itemSlots:3,items:[],
+  hasShadowStep:false,shadowStepCd:0,
+  hasZeusJudgement:false,zeusCd:0,
+  hasRainbowNova:false,novaCd:0
+};
+
+const world={index:0,biome:BIOMES[0],enemies:[],decor:[],bossSpawned:false,bossDefeated:false,
+  boss:null,stone:null,spawn:{x:WORLD_W/2,y:WORLD_H/2}};
+const projectiles=[]; // {x,y,vx,vy,r,dmg,color,life,friendly,poison}
+const minions=[];     // {x,y,cd}
+const shadowClones=[]; // {x,y,life,atkCd} - temporary duplicates from Shadow Lord's Shadow Step
+const particles=[];   // {x,y,vx,vy,life,color,r}
+const camera={x:0,y:0};
+
+/* ================= world generation ================= */
+function makeWorld(index){
+  const biome=BIOMES[index%BIOMES.length];
+  const count=clamp(Math.round((4+Math.floor(index/2))*3.33),5,20);
+  const enemies=[];
+  const spawn={x:WORLD_W/2,y:WORLD_H/2};
+  for(let i=0;i<count;i++){
+    let ex,ey;
+    do{ ex=rand(80,WORLD_W-80); ey=rand(80,WORLD_H-80); }
+    while(dist(ex,ey,spawn.x,spawn.y)<340);
+    const type=ENEMY_TYPES[Math.floor(rand(0,ENEMY_TYPES.length))];
+    enemies.push(makeEnemy(type,ex,ey,index,false));
+  }
+  const decor=[];
+  for(let i=0;i<26;i++){
+    decor.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),
+      s:rand(0.7,1.6),rot:rand(0,Math.PI*2)});
+  }
+  return {index,biome,enemies,decor,bossSpawned:false,bossDefeated:false,boss:null,stone:null,spawn};
+}
+
+function makeEnemy(type,x,y,index,isBoss){
+  // every level is noticeably tougher than the one before it
+  const colors={slime:"#4ade80",beast:"#c98a52",skeleton:"#dfe3ee",ghost:"#b6c3ff"};
+  const bossType=isBoss?BOSS_TYPES[index%BOSS_TYPES.length]:null;
+  const tierMult=isBoss?(BOSS_TIER_MULT[bossType.tier]||1):1;
+  const baseHp=isBoss?(150+index*26)*tierMult:16+index*3.2;
+  const baseDmg=isBoss?(12+index*1.6)*tierMult:4+index*0.55;
+  // speed scales much more gently than hp/damage so a top-tier boss is a real
+  // bullet-sponge threat rather than literally unhittable
+  const baseSpeed=isBoss?(128+index*0.6)*(1+(tierMult-1)*0.12):rand(58,86)+index*0.5;
+  return {x,y,type,isBoss:!!isBoss,r:isBoss?30:16,
+    hp:baseHp,maxHp:baseHp,damage:baseDmg,speed:baseSpeed,
+    color:isBoss?bossType.color:colors[type]||"#9aa3c9",
+    name:isBoss?bossType.name:type,
+    shape:isBoss?bossType.shape:type,
+    tier:isBoss?bossType.tier:(ENEMY_TIERS[type]||"?"),
+    vx:0,vy:0,hitCd:0,wanderT:rand(0,3),wanderDir:rand(0,Math.PI*2),
+    spawnX:x,spawnY:y,slowT:0,poisonT:0,poisonTick:0,
+    bossState:"idle",bossTimer:rand(0.8,1.4),dashChargeX:x,dashChargeY:y,
+    facing:0,bobT:rand(0,10),invFlash:0};
+}
+
+function loadWorld(w){
+  Object.assign(world,w);
+  player.x=w.spawn.x; player.y=w.spawn.y-40;
+  camera.x=player.x-viewW/2;
+  camera.y=player.y-viewH/2;
+  document.getElementById("worldTag").textContent="WORLD "+(w.index+1);
+  document.getElementById("worldName").textContent=w.biome.name;
+  markWorldReached(w.index+1);
+}
+
+/* ================= UI: class select ================= */
+const classGrid=document.getElementById("classGrid");
+let chosenClass=null;
+function buildClassGrid(){
+  classGrid.innerHTML="";
+  CLASSES.forEach(c=>{
+    const locked=c.unlockWorld>maxWorldReached;
+    const div=document.createElement("div");
+    div.className="classCard"+(locked?" locked":"");
+    const tierBadge='<span class="tierBadge">TIER '+c.tier+'</span>';
+    if(locked){
+      div.innerHTML='<h3>'+tierBadge+'<span class="swatch" style="background:#3a4468"></span>🔒 '+c.name+'</h3><p>Unlocks at World '+c.unlockWorld+'. Keep exploring!</p>';
+    } else {
+      div.innerHTML='<h3>'+tierBadge+'<span class="swatch" style="background:'+c.color+'"></span>'+c.name+'</h3><p>'+c.desc+'</p>';
+      div.addEventListener("click",()=>{
+        document.querySelectorAll(".classCard").forEach(e=>e.classList.remove("sel"));
+        div.classList.add("sel"); chosenClass=c;
+      });
+    }
+    classGrid.appendChild(div);
+  });
+  if(!chosenClass || chosenClass.unlockWorld>maxWorldReached){
+    chosenClass=CLASSES.find(c=>c.unlockWorld<=maxWorldReached)||CLASSES[0];
+  }
+  const idx=CLASSES.indexOf(chosenClass);
+  if(idx>=0 && classGrid.children[idx] && !classGrid.children[idx].classList.contains("locked")){
+    classGrid.children[idx].classList.add("sel");
+  }
+}
+buildClassGrid();
+
+/* newly reaching a milestone world unlocks a wizard permanently (saved separately
+   from the run itself, so restarting or dying never takes it away) */
+function markWorldReached(n){
+  if(n<=maxWorldReached) return;
+  const newlyUnlocked=CLASSES.filter(c=>c.unlockWorld>maxWorldReached && c.unlockWorld<=n);
+  maxWorldReached=n;
+  saveProgress(maxWorldReached);
+  buildClassGrid();
+  if(newlyUnlocked.length){
+    showToast("🔓 New wizard"+(newlyUnlocked.length>1?"s":"")+" unlocked: "+newlyUnlocked.map(c=>c.name).join(", ")+"!",4600);
+  }
+}
+
+function refreshContinueButton(){
+  const sg=loadSave();
+  const cont=document.getElementById("continueBtn");
+  if(sg){
+    cont.hidden=false;
+    cont.textContent="Continue as "+ (sg.name||"Wizard") +" — World "+(sg.worldIndex+1);
+  } else {
+    cont.hidden=true;
+  }
+}
+document.getElementById("continueBtn").addEventListener("click",()=>{
+  const sg=loadSave();
+  if(!sg) return;
+  const cls=CLASSES.find(c=>c.key===sg.cls)||CLASSES[0];
+  // recompute what this class guarantees fresh, so a save made before a class
+  // was tuned (e.g. extra item slots added later) still gets the current minimum
+  const baseline={dmgMult:1,frost:false,lifesteal:0,hasDash:false,shieldCharges:0,
+    speedMult:1,multishot:1,poison:false,minionCount:0,canPossess:false,
+    xpMult:1,itemSlots:3,items:[],hasShadowStep:false,hasZeusJudgement:false,atkRate:0.42,hasRainbowNova:false};
+  cls.apply(baseline);
+  Object.assign(player,{
+    level:sg.level,xp:sg.xp,xpNext:sg.xpNext,maxHp:sg.maxHp,
+    hp:sg.maxHp,cls:sg.cls,name:sg.name,perksTaken:sg.perks||[],
+    dmgMult:Math.max(sg.dmgMult||1,baseline.dmgMult),
+    frost:!!sg.frost||baseline.frost,
+    lifesteal:Math.max(sg.lifesteal||0,baseline.lifesteal),
+    hasDash:!!sg.hasDash||baseline.hasDash,
+    shieldCharges:Math.max(sg.shieldCharges||0,baseline.shieldCharges),
+    speedMult:Math.max(sg.speedMult||1,baseline.speedMult),
+    multishot:Math.max(sg.multishot||1,baseline.multishot),
+    poison:!!sg.poison||baseline.poison,
+    minionCount:Math.max(sg.minions||0,baseline.minionCount),
+    canPossess:!!sg.canPossess||baseline.canPossess,
+    possessing:null,hostStats:null,possessCd:0,
+    xpMult:Math.max(sg.xpMult||1,baseline.xpMult),
+    itemSlots:Math.max(sg.itemSlots||3,baseline.itemSlots),
+    items:(sg.items&&sg.items.length)?sg.items:baseline.items,
+    hasShadowStep:!!sg.hasShadowStep||baseline.hasShadowStep,shadowStepCd:0,
+    hasZeusJudgement:!!sg.hasZeusJudgement||baseline.hasZeusJudgement,zeusCd:0,
+    atkRate:Math.min(sg.atkRate||0.42,baseline.atkRate),
+    hasRainbowNova:!!sg.hasRainbowNova||baseline.hasRainbowNova,novaCd:0
+  });
+  player.color=cls.color;
+  startGame(sg.worldIndex);
+});
+refreshContinueButton();
+
+function resetPlayerStats(){
+  Object.assign(player,{
+    hp:100,maxHp:100,level:1,xp:0,xpNext:10,
+    speed:190,speedMult:1,atkRate:0.42,atkCd:0,
+    dmgMult:1,frost:false,lifesteal:0,hasDash:false,dashCd:0,dashTimeLeft:0,
+    shieldCharges:0,multishot:1,poison:false,minionCount:0,
+    invuln:0,perksTaken:[],canPossess:false,possessing:null,possessCd:0,hostStats:null,r:16,
+    xpMult:1,itemSlots:3,items:[],
+    hasShadowStep:false,shadowStepCd:0,
+    hasZeusJudgement:false,zeusCd:0,
+    hasRainbowNova:false,novaCd:0
+  });
+  shadowClones.length=0;
+}
+document.getElementById("beginBtn").addEventListener("click",()=>{
+  const nm=document.getElementById("nameInput").value.trim();
+  player.name=nm||"William";
+  resetPlayerStats();
+  const c=chosenClass||CLASSES[0];
+  player.cls=c.key; player.color=c.color;
+  c.apply(player);
+  startGame(0);
+});
+
+function startGame(worldIndex){
+  document.getElementById("startScreen").hidden=true;
+  document.getElementById("hud").hidden=false;
+  document.getElementById("joyBase").hidden=false;
+  document.getElementById("rightControls").hidden=false;
+  document.getElementById("pauseBtn").hidden=false;
+  document.getElementById("dashBtn").hidden=!player.hasDash;
+  document.getElementById("possessBtn").hidden=!player.canPossess;
+  document.getElementById("possessBtn").textContent="POSSESS";
+  document.getElementById("shadowStepBtn").hidden=!player.hasShadowStep;
+  document.getElementById("zeusBtn").hidden=!player.hasZeusJudgement;
+  document.getElementById("novaBtn").hidden=!player.hasRainbowNova;
+  shadowClones.length=0;
+  loadWorld(makeWorld(worldIndex));
+  mode="playing";
+  updateHUD();
+  const bonusMsg=classBonusMessage(player.cls);
+  if(bonusMsg){
+    showToast(bonusMsg,4400);
+    setTimeout(()=>{ if(mode==="playing") showToast("Explore "+world.biome.name+"! Defeat every monster to summon the boss.",3200); },4600);
+  } else {
+    showToast("Explore "+world.biome.name+"! Defeat every monster to summon the boss.");
+  }
+  requestAnimationFrame(loop);
+}
+function classBonusMessage(clsKey){
+  if(clsKey==="priest") return "Priest bonus: +60% damage, "+player.maxHp+" max HP, 5 spells to choose from at every level-up, +30% XP, and "+player.itemSlots+" item slots — a huge jump up from the low-tier wizards!";
+  if(clsKey==="undead") return "Undead King bonus: "+player.minionCount+" minions to start, double max HP ("+player.maxHp+" HP), a guaranteed Bone Legion spell at every level-up, plus a bonus Minion Spell charm ("+player.itemSlots+" item slots total)!";
+  if(clsKey==="storm") return "Storm Wizard bonus: spells fire 30% faster, plus Zeus's Judgement — tap ZEUS to smite every monster nearby with lightning!";
+  if(clsKey==="shadow") return "Shadow Lord bonus: Dash unlocked, plus Shadow Step — tap SHADOW to turn your own shadow into a duplicate that fights at your side!";
+  if(clsKey==="god") return "God Wizard bonus: +50% damage, "+player.maxHp+" max HP, +25% speed, and every ability — DASH, SHADOW, and ZEUS all ready to use!";
+  if(clsKey==="rainbow") return "Rainbow God bonus: frost & poison spells, +10% lifesteal, "+player.maxHp+" max HP, plus Rainbow Nova — tap NOVA to erupt a ring of elemental bolts!";
+  return null;
+}
+
+/* ================= HUD helpers ================= */
+function updateHUD(){
+  document.getElementById("lvlBadge").textContent=player.level;
+  document.getElementById("hpFill").style.width=clamp(player.hp/player.maxHp*100,0,100)+"%";
+  document.getElementById("hpLabel").textContent=Math.ceil(player.hp)+"/"+player.maxHp;
+  document.getElementById("xpFill").style.width=clamp(player.xp/player.xpNext*100,0,100)+"%";
+  document.getElementById("xpLabel").textContent="XP "+player.xp+"/"+player.xpNext;
+  document.getElementById("itemsCard").hidden=false;
+  document.getElementById("itemsLabel").textContent=player.items.length+"/"+player.itemSlots;
+}
+let toastTimer=null;
+function showToast(msg,ms){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),ms||3200);
+}
+
+let modeBeforePause=null;
+function openPause(){
+  if(mode!=="playing") return;
+  modeBeforePause=mode;
+  mode="paused";
+  const clsObj=CLASSES.find(c=>c.key===player.cls);
+  const clsName=(clsObj||{}).name||player.cls;
+  const tierTag=clsObj?" (Tier "+clsObj.tier+")":"";
+  document.getElementById("pauseInfo").textContent=
+    "World "+(world.index+1)+" — "+world.biome.name+" · Level "+player.level+" "+clsName+tierTag;
+  document.getElementById("pauseScreen").hidden=false;
+}
+function closePause(){
+  document.getElementById("pauseScreen").hidden=true;
+  mode=modeBeforePause||"playing";
+  modeBeforePause=null;
+}
+document.getElementById("pauseBtn").addEventListener("pointerdown",e=>{e.preventDefault();openPause();});
+document.getElementById("resumeBtn").addEventListener("click",closePause);
+
+let resetArmed=false, resetArmTimer=null;
+const resetBtn=document.getElementById("resetBtn");
+resetBtn.addEventListener("click",()=>{
+  if(!resetArmed){
+    resetArmed=true;
+    resetBtn.textContent="Click again to confirm";
+    clearTimeout(resetArmTimer);
+    resetArmTimer=setTimeout(()=>{ resetArmed=false; resetBtn.textContent="Reset Game"; },3000);
+    return;
+  }
+  resetArmed=false;
+  clearTimeout(resetArmTimer);
+  resetBtn.textContent="Reset Game";
+  document.getElementById("pauseScreen").hidden=true;
+  returnToStartMenu();
+});
+
+/* ================= input ================= */
+window.addEventListener("keydown",e=>{
+  keys[e.key.toLowerCase()]=true;
+  if(e.key===" "){ cast(); e.preventDefault(); }
+  if(e.key==="Shift") tryDash();
+  if(e.key.toLowerCase()==="e") tryPossess();
+  if(e.key.toLowerCase()==="q") tryShadowStep();
+  if(e.key.toLowerCase()==="r") tryZeusJudgement();
+  if(e.key.toLowerCase()==="f") tryRainbowNova();
+  if(e.key==="Escape"){
+    if(mode==="playing") openPause();
+    else if(mode==="paused") closePause();
+  }
+});
+window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+const joyBase=document.getElementById("joyBase");
+const joyStick=document.getElementById("joyStick");
+function joyVector(clientX,clientY){
+  const rect=joyBase.getBoundingClientRect();
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  let dx=clientX-cx, dy=clientY-cy;
+  const max=rect.width/2;
+  const d=Math.hypot(dx,dy);
+  if(d>max){dx=dx/d*max; dy=dy/d*max;}
+  joyStick.style.transform="translate("+(dx-26)+"px,"+(dy-26)+"px)";
+  joy.dx=dx/max; joy.dy=dy/max;
+}
+function resetJoy(){
+  joy.dx=0; joy.dy=0; joy.active=false; joy.id=null;
+  joyStick.style.transform="translate(-50%,-50%)";
+}
+joyBase.addEventListener("pointerdown",e=>{
+  joy.active=true; joy.id=e.pointerId; joyBase.setPointerCapture(e.pointerId);
+  joyVector(e.clientX,e.clientY);
+});
+joyBase.addEventListener("pointermove",e=>{
+  if(joy.active && e.pointerId===joy.id) joyVector(e.clientX,e.clientY);
+});
+["pointerup","pointercancel","pointerleave"].forEach(ev=>{
+  joyBase.addEventListener(ev,e=>{ if(e.pointerId===joy.id) resetJoy(); });
+});
+
+document.getElementById("atkBtn").addEventListener("pointerdown",e=>{e.preventDefault();cast();});
+document.getElementById("dashBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryDash();});
+document.getElementById("shadowStepBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShadowStep();});
+document.getElementById("zeusBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryZeusJudgement();});
+document.getElementById("novaBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryRainbowNova();});
+document.getElementById("possessBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryPossess();});
+
+canvas.addEventListener("pointerdown",e=>{
+  mouse.x=e.clientX; mouse.y=e.clientY; mouse.down=true;
+  if(mode==="playing") castTowardScreen(mouse.x,mouse.y);
+});
+canvas.addEventListener("pointermove",e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
+
+/* ================= combat ================= */
+function nearestEnemyToPlayer(maxRange){
+  let best=null,bd=maxRange;
+  world.enemies.forEach(en=>{
+    const d=dist(player.x,player.y,en.x,en.y);
+    if(d<bd){bd=d; best=en;}
+  });
+  if(world.boss && !world.boss.dead){
+    const d=dist(player.x,player.y,world.boss.x,world.boss.y);
+    if(d<bd){bd=d; best=world.boss;}
+  }
+  return best;
+}
+
+function spawnProjectile(angle,friendly){
+  const p={x:player.x+Math.cos(angle)*player.r,y:player.y+Math.sin(angle)*player.r,
+    vx:Math.cos(angle)*player.projSpeed,vy:Math.sin(angle)*player.projSpeed,
+    r:player.projRadius,dmg:player.baseDamage*player.dmgMult,color:player.color,
+    life:1.1,friendly:true,frost:player.frost,poison:player.poison};
+  projectiles.push(p);
+}
+function cast(){
+  if(mode!=="playing") return;
+  if(player.atkCd>0) return;
+  player.atkCd=player.atkRate;
+  if(player.possessing){ meleeAttack(); return; }
+  const target=nearestEnemyToPlayer(560);
+  let angle=player.facing;
+  if(target) angle=Math.atan2(target.y-player.y,target.x-player.x);
+  const shots=player.multishot;
+  const spread=0.28;
+  for(let i=0;i<shots;i++){
+    const off=(i-(shots-1)/2)*spread;
+    spawnProjectile(angle+off,true);
+  }
+  spawnBurst(player.x,player.y,player.color,6);
+}
+function castTowardScreen(sx,sy){
+  if(mode!=="playing") return;
+  if(player.atkCd>0) return;
+  player.atkCd=player.atkRate;
+  if(player.possessing){ meleeAttack(); return; }
+  const wx=sx+camera.x, wy=sy+camera.y;
+  const angle=Math.atan2(wy-player.y,wx-player.x);
+  const shots=player.multishot, spread=0.28;
+  for(let i=0;i<shots;i++){
+    const off=(i-(shots-1)/2)*spread;
+    spawnProjectile(angle+off,true);
+  }
+  spawnBurst(player.x,player.y,player.color,6);
+}
+function tryDash(){
+  if(mode!=="playing"||!player.hasDash||player.dashCd>0) return;
+  player.dashCd=3.0; player.dashTimeLeft=0.18; player.invuln=Math.max(player.invuln,0.24);
+  spawnBurst(player.x,player.y,"#c9b4ff",14);
+}
+
+/* ---- Shadow Lord: turn your shadow into a duplicate that fights beside you ---- */
+function tryShadowStep(){
+  if(mode!=="playing"||!player.hasShadowStep||player.shadowStepCd>0) return;
+  player.shadowStepCd=8.0;
+  shadowClones.push({x:player.x,y:player.y,life:6.0,atkCd:0.2});
+  spawnBurst(player.x,player.y,"#4c1d95",16);
+  showToast("Your shadow peels away and fights at your side!",2600);
+}
+
+/* ---- Storm Wizard: Zeus's Judgement — a devastating lightning strike on everything nearby ---- */
+function tryZeusJudgement(){
+  if(mode!=="playing"||!player.hasZeusJudgement||player.zeusCd>0) return;
+  player.zeusCd=10.0;
+  const radius=420;
+  const dmg=player.baseDamage*player.dmgMult*3.5;
+  let hitAny=false;
+  world.enemies.forEach(en=>{
+    if(dist(player.x,player.y,en.x,en.y)<radius){
+      en.hp-=dmg; en.slowT=Math.max(en.slowT,0.6);
+      spawnBurst(en.x,en.y,"#fef08a",16);
+      hitAny=true;
+    }
+  });
+  world.enemies.forEach(en=>{
+    if(en.hp<=0 && !en.dead){ en.dead=true; grantXP(2); tryGrantItem(false); spawnBurst(en.x,en.y,en.color,14); }
+  });
+  world.enemies=world.enemies.filter(en=>!en.dead);
+  if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
+    world.boss.hp-=dmg;
+    spawnBurst(world.boss.x,world.boss.y,"#fef08a",20);
+    hitAny=true;
+    if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
+  }
+  spawnBurst(player.x,player.y,"#fde047",30);
+  zeusFlashT=0.28;
+  updateHUD();
+  showToast(hitAny?"⚡ Zeus's Judgement crashes down!":"⚡ Zeus's Judgement strikes... but nothing was close enough!",2600);
+}
+
+/* ---- Rainbow God: Rainbow Nova — a ring of elemental bolts in every direction ---- */
+function tryRainbowNova(){
+  if(mode!=="playing"||!player.hasRainbowNova||player.novaCd>0) return;
+  player.novaCd=7.0;
+  const count=16;
+  const hues=["#ff5b5b","#ffb454","#ffe066","#7ee787","#5bc0ff","#a78bfa","#f472b6"];
+  for(let i=0;i<count;i++){
+    const angle=(i/count)*Math.PI*2;
+    const col=hues[i%hues.length];
+    projectiles.push({x:player.x,y:player.y,vx:Math.cos(angle)*440,vy:Math.sin(angle)*440,
+      r:7,dmg:player.baseDamage*player.dmgMult*1.4,color:col,life:1.2,
+      friendly:true,frost:true,poison:true});
+  }
+  spawnBurst(player.x,player.y,"#f472b6",26);
+  showToast("🌈 Rainbow Nova erupts in every direction!",2400);
+}
+
+/* ---- Parasite: possess a nearby monster's body ---- */
+function meleeAttack(){
+  const range=player.r+34;
+  const biteColor=player.possessing?player.possessing.color:player.color;
+  const dealHit=(en,extraReach)=>{
+    if(dist(player.x,player.y,en.x,en.y)>=range+(extraReach||0)) return;
+    const dmg=18*player.dmgMult;
+    en.hp-=dmg;
+    if(player.frost) en.slowT=1.4;
+    if(player.poison){ en.poisonT=3; en.poisonTick=0.01; }
+    if(player.lifesteal>0) player.hp=Math.min(player.maxHp,player.hp+dmg*player.lifesteal);
+    spawnBurst(en.x,en.y,biteColor,6);
+  };
+  world.enemies.forEach(en=>dealHit(en));
+  world.enemies.forEach(en=>{
+    if(en.hp<=0 && !en.dead){ en.dead=true; grantXP(2); tryGrantItem(false); spawnBurst(en.x,en.y,en.color,14); }
+  });
+  world.enemies=world.enemies.filter(e=>!e.dead);
+  if(world.boss && !world.boss.dead){
+    dealHit(world.boss, world.boss.r);
+    if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
+  }
+  spawnBurst(player.x,player.y,biteColor,6);
+  updateHUD();
+}
+function tryPossess(){
+  if(mode!=="playing" || !player.canPossess) return;
+  if(player.possessing){ exitPossession(true); return; }
+  if(player.possessCd>0) return;
+  let target=null, bd=Infinity;
+  world.enemies.forEach(en=>{
+    const d=dist(player.x,player.y,en.x,en.y);
+    if(d<bd){ bd=d; target=en; }
+  });
+  if(!target){ showToast("No creature nearby to possess!",2200); return; }
+  enterPossession(target);
+}
+function enterPossession(en){
+  player.hostStats={hp:player.hp,maxHp:player.maxHp,speed:player.speed,speedMult:player.speedMult,r:player.r};
+  world.enemies=world.enemies.filter(e=>e!==en);
+  player.possessing={type:en.type,color:en.color};
+  player.x=en.x; player.y=en.y;
+  player.hp=en.hp; player.maxHp=en.maxHp;
+  player.speed=en.speed*1.1; player.speedMult=1;
+  player.r=en.r;
+  const btn=document.getElementById("possessBtn");
+  btn.textContent="LEAVE";
+  updateHUD();
+  showToast("You possess the "+en.type+" (Tier "+en.tier+")! ATK to bite — press POSSESS again to leave.",3600);
+}
+function exitPossession(voluntary){
+  if(!player.possessing) return;
+  const h=player.hostStats;
+  player.hp=h.hp; player.maxHp=h.maxHp;
+  player.speed=h.speed; player.speedMult=h.speedMult; player.r=h.r;
+  player.possessing=null; player.hostStats=null;
+  player.possessCd=1.4;
+  const btn=document.getElementById("possessBtn");
+  if(btn) btn.textContent="POSSESS";
+  updateHUD();
+  showToast(voluntary?"You leave the host body and return to normal.":"The host body couldn't hold on — you're back to normal!",3200);
+}
+
+function spawnBurst(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=rand(0,Math.PI*2), sp=rand(40,160);
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(0.25,0.55),color,r:rand(1.5,3.5)});
+  }
+}
+
+/* ================= perks / leveling ================= */
+let pendingLevelUps=0;
+function grantXP(n){
+  player.xp+=Math.round(n*(player.xpMult||1));
+  let levels=0;
+  while(player.xp>=player.xpNext){
+    player.xp-=player.xpNext;
+    player.level++;
+    player.xpNext=6+player.level*4;
+    levels++;
+  }
+  updateHUD();
+  if(levels>0){
+    pendingLevelUps+=levels-1;
+    openLevelUp();
+  }
+}
+function tryGrantItem(guaranteed){
+  if(player.items.length>=player.itemSlots){
+    if(guaranteed) showToast("Found a charm, but your item slots are full!",2600);
+    return;
+  }
+  if(!guaranteed && Math.random()>0.15) return;
+  const item=ITEMS[Math.floor(rand(0,ITEMS.length))];
+  item.apply(player);
+  player.items.push(item.key);
+  updateHUD();
+  saveGame();
+  showToast("Found "+item.name+"! ("+player.items.length+"/"+player.itemSlots+" slots) "+item.desc,3400);
+}
+// fills a pool of `total` perk cards, optionally forcing a specific perk into
+// slot 0. When `total` is bigger than the number of unique perks (Priest asked
+// for 35!) we just keep reshuffling fresh copies of the perk list so the pool
+// fills up with repeats instead of running out.
+function buildPerkPool(total,forcedKey){
+  const pool=[];
+  if(forcedKey){
+    const forced=PERKS.find(p=>p.key===forcedKey);
+    if(forced) pool.push(forced);
+  }
+  while(pool.length<total){
+    const shuffled=[...PERKS].sort(()=>Math.random()-0.5);
+    for(const perk of shuffled){
+      if(pool.length>=total) break;
+      if(forcedKey && perk.key===forcedKey && pool.length===0) continue;
+      pool.push(perk);
+    }
+  }
+  return pool.slice(0,total);
+}
+function openLevelUp(){
+  mode="levelup";
+  const grid=document.getElementById("perkGrid");
+  grid.innerHTML="";
+  let slots=3, forcedKey=null;
+  if(player.cls==="priest") slots=5; // 2 extra spell slots to choose from
+  if(player.cls==="undead"){ slots=4; forcedKey="bonelegion"; }
+  const pool=buildPerkPool(slots,forcedKey);
+  pool.forEach((perk,i)=>{
+    const card=document.createElement("div");
+    card.className="perkCard";
+    card.style.borderLeftColor=perk.color;
+    const tag=(forcedKey && i===0)?'<p style="color:var(--gold);font-weight:800;margin:0 0 4px;">GUARANTEED</p>':"";
+    card.innerHTML=tag+"<h4>"+perk.name+"</h4><p>"+perk.desc+"</p>";
+    card.addEventListener("click",()=>{
+      const beforeMaxHp=player.maxHp, beforeSpeedMult=player.speedMult;
+      perk.apply(player);
+      player.perksTaken.push(perk.key);
+      if(player.possessing && player.hostStats){
+        // keep permanent perk gains even though current stats belong to the host body right now
+        player.hostStats.maxHp += (player.maxHp-beforeMaxHp);
+        player.hostStats.speedMult *= (player.speedMult/(beforeSpeedMult||1))||1;
+      }
+      document.getElementById("dashBtn").hidden=!player.hasDash;
+      updateHUD();
+      saveGame();
+      if(pendingLevelUps>0){
+        pendingLevelUps--;
+        openLevelUp();
+      } else {
+        document.getElementById("levelUpScreen").hidden=true;
+        mode="playing";
+      }
+    });
+    grid.appendChild(card);
+  });
+  document.getElementById("levelUpScreen").hidden=false;
+}
+
+/* ================= world progression ================= */
+function checkBossSpawn(){
+  if(!world.bossSpawned && !world.bossDefeated && world.enemies.length===0){
+    let bx,by;
+    do{ bx=rand(120,WORLD_W-120); by=rand(120,WORLD_H-120); }
+    while(dist(bx,by,world.spawn.x,world.spawn.y)<500);
+    world.boss=makeEnemy("boss",bx,by,world.index,true);
+    world.bossSpawned=true;
+    document.getElementById("compassWrap").hidden=false;
+    document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier;
+    showToast(world.boss.name+" (Tier "+world.boss.tier+") has awakened! Follow the golden arrow.",4200);
+  }
+}
+function onBossDefeated(){
+  world.bossDefeated=true;
+  document.getElementById("compassWrap").hidden=true;
+  world.stone={x:world.boss.x,y:world.boss.y,t:0};
+  grantXP(12);
+  tryGrantItem(true);
+  showToast("The boss dropped a Teleport Stone! Walk into it to travel onward.",4200);
+}
+function nextWorld(){
+  if(player.possessing) exitPossession(true);
+  const cleared=world.index+1;
+  player.hp=player.maxHp;
+  saveGame();
+  const wcTitle=document.getElementById("wcTitle");
+  const wcSub=document.getElementById("wcSubtitle");
+  if(cleared===100){
+    wcTitle.textContent="WORLD 100 CONQUERED!";
+    wcSub.textContent="You are a true Archmage, "+player.name+"! The realm keeps going — press on whenever you like.";
+  } else {
+    wcTitle.textContent="WORLD "+cleared+" CLEARED!";
+    wcSub.textContent="Full heal! Get ready for World "+(cleared+1)+": "+BIOMES[cleared%BIOMES.length].name+".";
+  }
+  document.getElementById("worldClearScreen").hidden=false;
+  mode="worldclear";
+}
+document.getElementById("wcContinueBtn").addEventListener("click",()=>{
+  document.getElementById("worldClearScreen").hidden=true;
+  loadWorld(makeWorld(world.index+1));
+  mode="playing";
+  updateHUD();
+});
+document.getElementById("backToMenuBtn").addEventListener("click",()=>{
+  document.getElementById("gameOverScreen").hidden=true;
+  returnToStartMenu();
+});
+function returnToStartMenu(){
+  document.getElementById("hud").hidden=true;
+  document.getElementById("joyBase").hidden=true;
+  document.getElementById("rightControls").hidden=true;
+  document.getElementById("pauseBtn").hidden=true;
+  document.getElementById("compassWrap").hidden=true;
+  player.possessing=null; player.hostStats=null;
+  shadowClones.length=0;
+  zeusFlashT=0;
+  document.getElementById("zeusFlash").style.opacity="0";
+  mode="start";
+  refreshContinueButton();
+  buildClassGrid();
+  document.getElementById("startScreen").hidden=false;
+}
+
+/* ================= update ================= */
+function updatePlayer(dt){
+  let dx=0,dy=0;
+  if(joy.active){ dx=joy.dx; dy=joy.dy; }
+  if(keys["w"]||keys["arrowup"]) dy-=1;
+  if(keys["s"]||keys["arrowdown"]) dy+=1;
+  if(keys["a"]||keys["arrowleft"]) dx-=1;
+  if(keys["d"]||keys["arrowright"]) dx+=1;
+  const mag=Math.hypot(dx,dy);
+  if(mag>0.05){
+    dx/=Math.max(mag,1); dy/=Math.max(mag,1);
+    player.facing=Math.atan2(dy,dx);
+  } else { dx=0; dy=0; }
+
+  let spd=player.speed*player.speedMult;
+  if(player.dashTimeLeft>0){
+    spd*=4.2;
+    dx=Math.cos(player.facing); dy=Math.sin(player.facing);
+    player.dashTimeLeft-=dt;
+  }
+  player.x=player.x+dx*spd*dt;
+  player.y=player.y+dy*spd*dt;
+
+  player.atkCd=Math.max(0,player.atkCd-dt);
+  player.dashCd=Math.max(0,player.dashCd-dt);
+  player.invuln=Math.max(0,player.invuln-dt);
+  player.possessCd=Math.max(0,player.possessCd-dt);
+  player.shadowStepCd=Math.max(0,player.shadowStepCd-dt);
+  player.zeusCd=Math.max(0,player.zeusCd-dt);
+  player.novaCd=Math.max(0,player.novaCd-dt);
+
+  // auto-attack whatever's in range while running, so you don't have to
+  // stop moving (or free up a finger from the joystick) to fight back.
+  // casts 90% slower than standing still — only 10% of the normal rate,
+  // so planting your feet is the real way to fight.
+  const autoShootRateWhileWalking=0.10;
+  const autoShootSlowdown=1/autoShootRateWhileWalking;
+  if(mag>0.05 && player.atkCd<=0){
+    if(player.possessing){
+      const meleeRange=player.r+34;
+      let inRange=world.enemies.some(en=>dist(player.x,player.y,en.x,en.y)<meleeRange);
+      if(!inRange && world.boss && !world.boss.dead &&
+         dist(player.x,player.y,world.boss.x,world.boss.y)<meleeRange+world.boss.r) inRange=true;
+      if(inRange){ cast(); player.atkCd*=autoShootSlowdown; }
+    } else if(nearestEnemyToPlayer(560)){
+      cast(); player.atkCd*=autoShootSlowdown;
+    }
+  }
+
+  const db=document.getElementById("dashBtn");
+  if(!db.hidden) db.style.opacity=player.dashCd>0?"0.45":"1";
+  const pb=document.getElementById("possessBtn");
+  if(!pb.hidden && !player.possessing) pb.style.opacity=player.possessCd>0?"0.45":"1";
+  else if(!pb.hidden) pb.style.opacity="1";
+  const ssb=document.getElementById("shadowStepBtn");
+  if(!ssb.hidden) ssb.style.opacity=player.shadowStepCd>0?"0.45":"1";
+  const zb=document.getElementById("zeusBtn");
+  if(!zb.hidden) zb.style.opacity=player.zeusCd>0?"0.45":"1";
+  const nb=document.getElementById("novaBtn");
+  if(!nb.hidden) nb.style.opacity=player.novaCd>0?"0.45":"1";
+
+  camera.x=player.x-viewW/2;
+  camera.y=player.y-viewH/2;
+}
+
+function updateMinions(dt){
+  minions.length=Math.min(minions.length,player.minionCount);
+  while(minions.length<player.minionCount){
+    minions.push({x:player.x-30,y:player.y,cd:rand(0,0.5)});
+  }
+  minions.forEach((m,i)=>{
+    const tx=player.x-24-(i*22), ty=player.y+18;
+    m.x+=(tx-m.x)*Math.min(1,dt*4);
+    m.y+=(ty-m.y)*Math.min(1,dt*4);
+    m.cd-=dt;
+    if(m.cd<=0){
+      const target=nearestEnemyToPlayer(420);
+      if(target){
+        const angle=Math.atan2(target.y-m.y,target.x-m.x);
+        projectiles.push({x:m.x,y:m.y,vx:Math.cos(angle)*380,vy:Math.sin(angle)*380,
+          r:5,dmg:player.baseDamage*player.dmgMult*0.05,color:"#c9d1e0",life:1,friendly:true,frost:false,poison:false});
+      }
+      m.cd=1.3;
+    }
+  });
+}
+
+function updateShadowClones(dt){
+  for(let i=shadowClones.length-1;i>=0;i--){
+    const c=shadowClones[i];
+    c.life-=dt;
+    if(c.life<=0){ shadowClones.splice(i,1); continue; }
+    const target=nearestEnemyToPlayer(480);
+    if(target){
+      const followX=player.x-Math.cos(player.facing)*44, followY=player.y-Math.sin(player.facing)*44;
+      c.x+=(followX-c.x)*Math.min(1,dt*3);
+      c.y+=(followY-c.y)*Math.min(1,dt*3);
+      c.atkCd-=dt;
+      if(c.atkCd<=0){
+        const angle=Math.atan2(target.y-c.y,target.x-c.x);
+        projectiles.push({x:c.x,y:c.y,vx:Math.cos(angle)*420,vy:Math.sin(angle)*420,
+          r:6,dmg:player.baseDamage*player.dmgMult*0.6,color:"#4c1d95",life:1,friendly:true,frost:false,poison:false});
+        c.atkCd=0.5;
+      }
+    } else {
+      const followX=player.x-34, followY=player.y;
+      c.x+=(followX-c.x)*Math.min(1,dt*3);
+      c.y+=(followY-c.y)*Math.min(1,dt*3);
+    }
+  }
+}
+
+function updateEnemy(en,dt){
+  if(en.dead) return;
+  en.bobT+=dt;
+  en.hitCd=Math.max(0,en.hitCd-dt);
+  en.slowT=Math.max(0,en.slowT-dt);
+  if(en.poisonT>0){
+    en.poisonT-=dt; en.poisonTick-=dt;
+    if(en.poisonTick<=0){ en.hp-=4; en.poisonTick=0.5; spawnBurst(en.x,en.y,"#84cc16",3); }
+  }
+  const slowFactor=en.slowT>0?0.45:1;
+  const dToPlayer=dist(en.x,en.y,player.x,player.y);
+  let tx=en.x, ty=en.y;
+
+  if(player.possessing){
+    // wearing a monster's body: nothing recognizes you, so everyone just idles/patrols
+    en.wanderT-=dt;
+    if(en.wanderT<=0){ en.wanderDir=rand(0,Math.PI*2); en.wanderT=rand(1.4,3); }
+    if(dist(en.x,en.y,en.spawnX,en.spawnY)>90){
+      en.wanderDir=Math.atan2(en.spawnY-en.y,en.spawnX-en.x);
+    }
+    const idleSpeed=en.isBoss?en.speed*0.2:en.speed*0.35;
+    en.vx=Math.cos(en.wanderDir)*idleSpeed*slowFactor;
+    en.vy=Math.sin(en.wanderDir)*idleSpeed*slowFactor;
+  } else if(en.isBoss){
+    en.bossTimer-=dt;
+    if(en.bossTimer<=0){
+      if(en.bossState==="idle"){
+        en.bossState="telegraph"; en.bossTimer=0.5;
+        en.dashChargeX=player.x; en.dashChargeY=player.y;
+        en.vx=0; en.vy=0;
+      } else if(en.bossState==="telegraph"){
+        en.bossState="dashing"; en.bossTimer=0.45;
+        const a=Math.atan2(en.dashChargeY-en.y,en.dashChargeX-en.x);
+        en.vx=Math.cos(a)*en.speed*2.6; en.vy=Math.sin(a)*en.speed*2.6;
+        en.facing=a;
+      } else {
+        en.bossState="idle"; en.bossTimer=rand(1.1,1.8);
+        en.vx*=0.15; en.vy*=0.15;
+      }
+    }
+    if(en.bossState==="telegraph"){ en.vx=0; en.vy=0; }
+    if(en.bossState==="dashing"){ en.vx*=0.985; en.vy*=0.985; }
+  } else {
+    const aggro=260;
+    if(dToPlayer<aggro){
+      const a=Math.atan2(player.y-en.y,player.x-en.x);
+      en.vx=Math.cos(a)*en.speed*slowFactor; en.vy=Math.sin(a)*en.speed*slowFactor;
+    } else {
+      // outside aggro range: creep steadily toward the player instead of patrolling,
+      // with a gentle wobble so the approach doesn't look robotic
+      en.wanderT-=dt;
+      if(en.wanderT<=0){ en.wanderWobble=rand(-0.7,0.7); en.wanderT=rand(1.2,2.2); }
+      const toPlayer=Math.atan2(player.y-en.y,player.x-en.x);
+      const creepDir=toPlayer+(en.wanderWobble||0);
+      en.vx=Math.cos(creepDir)*en.speed*0.32*slowFactor;
+      en.vy=Math.sin(creepDir)*en.speed*0.32*slowFactor;
+    }
+  }
+  en.x=en.x+en.vx*dt;
+  en.y=en.y+en.vy*dt;
+  if(Math.abs(en.vx)+Math.abs(en.vy)>1) en.facing=Math.atan2(en.vy,en.vx);
+
+  if(!player.possessing && dToPlayer<en.r+player.r && en.hitCd<=0 && player.invuln<=0){
+    en.hitCd=0.9;
+    if(player.shieldCharges>0){
+      player.shieldCharges--; spawnBurst(player.x,player.y,"#ffd54a",10);
+    } else {
+      player.hp-=en.damage;
+      player.invuln=0.6;
+      spawnBurst(player.x,player.y,"#ff4d6d",8);
+      if(player.hp<=0){
+        player.hp=0;
+        if(player.possessing) exitPossession(false);
+        else triggerGameOver();
+      }
+    }
+    updateHUD();
+  }
+}
+
+function triggerGameOver(){
+  mode="gameover";
+  document.getElementById("gameOverScreen").hidden=false;
+}
+
+function updateProjectiles(dt){
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
+    let hit=false;
+    if(p.life<=0) hit=true;
+    if(!hit && p.friendly){
+      for(const en of world.enemies){
+        if(!en.dead && dist(p.x,p.y,en.x,en.y)<en.r+p.r){
+          en.hp-=p.dmg;
+          if(p.frost) en.slowT=1.4;
+          if(p.poison){ en.poisonT=3; en.poisonTick=0.01; }
+          if(player.lifesteal>0){ player.hp=Math.min(player.maxHp,player.hp+p.dmg*player.lifesteal); updateHUD(); }
+          spawnBurst(en.x,en.y,p.color,6);
+          hit=true;
+          if(en.hp<=0){
+            en.dead=true; grantXP(2); tryGrantItem(false);
+            spawnBurst(en.x,en.y,en.color,14);
+          }
+          break;
+        }
+      }
+      if(!hit && world.boss && !world.boss.dead && dist(p.x,p.y,world.boss.x,world.boss.y)<world.boss.r+p.r){
+        world.boss.hp-=p.dmg;
+        if(p.frost) world.boss.slowT=1.0;
+        if(p.poison){ world.boss.poisonT=3; world.boss.poisonTick=0.01; }
+        if(player.lifesteal>0){ player.hp=Math.min(player.maxHp,player.hp+p.dmg*player.lifesteal); updateHUD(); }
+        spawnBurst(world.boss.x,world.boss.y,p.color,8);
+        hit=true;
+        if(world.boss.hp<=0 && !world.boss.dead){
+          world.boss.dead=true;
+          onBossDefeated();
+        }
+      }
+    }
+    if(hit) projectiles.splice(i,1);
+  }
+  world.enemies=world.enemies.filter(en=>!en.dead);
+}
+
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.9; p.vy*=0.9; p.life-=dt;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+function updateCompass(){
+  const wrap=document.getElementById("compassWrap");
+  if(world.bossSpawned && !world.bossDefeated && world.boss && !world.boss.dead){
+    wrap.hidden=false;
+    const a=Math.atan2(world.boss.y-player.y,world.boss.x-player.x);
+    document.getElementById("compass").style.transform="rotate("+(a*180/Math.PI)+"deg)";
+  } else {
+    wrap.hidden=true;
+  }
+}
+
+function updateStone(dt){
+  if(world.stone){
+    world.stone.t+=dt;
+    if(dist(player.x,player.y,world.stone.x,world.stone.y)<player.r+18){
+      world.stone=null;
+      nextWorld();
+    }
+  }
+}
+
+/* ================= render ================= */
+function drawBackground(){
+  const b=world.biome;
+  const grad=ctx.createLinearGradient(0,0,0,viewH);
+  grad.addColorStop(0,b.sky[0]); grad.addColorStop(1,b.sky[1]);
+  ctx.fillStyle=grad; ctx.fillRect(0,0,viewW,viewH);
+
+  ctx.save();
+  ctx.translate(-camera.x,-camera.y);
+
+  // infinite ground: always cover the visible viewport, wherever the camera has roamed
+  const pad=160;
+  const left=camera.x-pad, top=camera.y-pad, areaW=viewW+pad*2, areaH=viewH+pad*2;
+  ctx.fillStyle=b.ground;
+  ctx.fillRect(left,top,areaW,areaH);
+
+  ctx.strokeStyle="rgba(255,255,255,0.05)";
+  ctx.lineWidth=2;
+  const gridSize=80;
+  const startGX=Math.floor(left/gridSize)*gridSize;
+  const startGY=Math.floor(top/gridSize)*gridSize;
+  for(let gx=startGX; gx<left+areaW; gx+=gridSize){ ctx.beginPath();ctx.moveTo(gx,top);ctx.lineTo(gx,top+areaH);ctx.stroke(); }
+  for(let gy=startGY; gy<top+areaH; gy+=gridSize){ ctx.beginPath();ctx.moveTo(left,gy);ctx.lineTo(left+areaW,gy);ctx.stroke(); }
+
+  world.decor.forEach(d=>drawDecor(d,b));
+
+  ctx.restore();
+}
+
+function drawDecor(d,biome){
+  const x=d.x,y=d.y,s=24*d.s;
+  ctx.fillStyle=biome.decor;
+  ctx.globalAlpha=0.9;
+  switch(biome.decorShape){
+    case "tree":
+      ctx.fillRect(x-3,y,6,s*0.7);
+      ctx.beginPath(); ctx.moveTo(x-s*0.6,y); ctx.lineTo(x+s*0.6,y); ctx.lineTo(x,y-s*1.2); ctx.closePath(); ctx.fill();
+      break;
+    case "crystal":
+      ctx.beginPath(); ctx.moveTo(x,y-s); ctx.lineTo(x+s*0.5,y); ctx.lineTo(x,y+s*0.4); ctx.lineTo(x-s*0.5,y); ctx.closePath(); ctx.fill();
+      break;
+    case "rock":
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.6,s*0.4,0,0,Math.PI*2); ctx.fill();
+      break;
+    case "coral":
+      ctx.fillRect(x-s*0.15,y-s*0.8,s*0.3,s*0.8);
+      ctx.fillRect(x-s*0.5,y-s*0.5,s*0.3,s*0.5);
+      ctx.fillRect(x+s*0.2,y-s*0.6,s*0.3,s*0.6);
+      break;
+    case "swirl":
+      ctx.beginPath(); ctx.arc(x,y,s*0.45,0,Math.PI*1.4); ctx.strokeStyle=biome.decor; ctx.lineWidth=6; ctx.stroke();
+      break;
+    case "mushroom":
+      ctx.fillRect(x-3,y-s*0.1,6,s*0.5);
+      ctx.beginPath(); ctx.ellipse(x,y-s*0.15,s*0.4,s*0.25,0,0,Math.PI*2); ctx.fill();
+      break;
+    case "cloud":
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.5,s*0.28,0,0,Math.PI*2); ctx.ellipse(x+s*0.3,y+4,s*0.32,s*0.2,0,0,Math.PI*2); ctx.fill();
+      break;
+    case "pillar":
+      ctx.fillRect(x-s*0.22,y-s*0.9,s*0.44,s*0.9);
+      break;
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawWizard(x,y,color,scale,invulnFlash,angle){
+  const s=4*scale;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle="rgba(0,0,0,0.35)";
+  ctx.beginPath(); ctx.ellipse(0,s*3.1,s*2.4,s*0.9,0,0,Math.PI*2); ctx.fill();
+
+  const c=invulnFlash?"#ffffff":color;
+  ctx.fillStyle=shade(c,-45);
+  ctx.fillRect(-s*1.3,s*1.2,s*1.0,s*1.6);
+  ctx.fillRect(s*0.3,s*1.2,s*1.0,s*1.6);
+
+  ctx.fillStyle=c;
+  ctx.fillRect(-s*1.9,-s*1.5,s*3.8,s*2.9);
+  ctx.fillStyle=shade(c,-55);
+  ctx.fillRect(-s*1.9,s*0.5,s*3.8,s*0.55);
+
+  ctx.fillStyle="#f2c9a0";
+  ctx.fillRect(-s*1.0,-s*3.0,s*2.0,s*1.7);
+  ctx.fillStyle="#2a1c33";
+  ctx.fillRect(-s*0.55,-s*2.4,s*0.35,s*0.35);
+  ctx.fillRect(s*0.2,-s*2.4,s*0.35,s*0.35);
+
+  ctx.fillStyle=shade(c,-15);
+  ctx.fillRect(-s*1.5,-s*4.3,s*3.0,s*0.9);
+  ctx.beginPath();
+  ctx.moveTo(-s*1.1,-s*3.4); ctx.lineTo(s*1.1,-s*3.4); ctx.lineTo(0,-s*5.9); ctx.closePath(); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBoss(en){
+  // each boss is drawn as the creature its name says it is (a slime king looks
+  // like a giant slime, a bone tyrant like a skeleton, and so on), just bigger
+  // and crowned — the white telegraph flash works the same way for every shape
+  // since it's just a temporary override of the enemy's own color.
+  const savedColor=en.color;
+  if(en.bossState==="telegraph") en.color="#ffffff";
+  let crownY;
+  if(en.shape==="slime"){ drawSlime(en); crownY=en.r*0.85+12; }
+  else if(en.shape==="beast"){ drawBeast(en); crownY=en.r*1.0+16; }
+  else if(en.shape==="ghost"){ drawGhost(en); crownY=en.r*0.85+14; }
+  else { drawWizard(en.x,en.y,en.color,2.1,false,en.facing); crownY=46; }
+  en.color=savedColor;
+  ctx.save();
+  ctx.translate(en.x,en.y-crownY);
+  ctx.fillStyle="#ffd54a";
+  ctx.fillRect(-14,-6,28,6);
+  ctx.fillRect(-14,-14,4,10); ctx.fillRect(-2,-16,4,12); ctx.fillRect(10,-14,4,10);
+  ctx.restore();
+}
+
+function drawSlime(en){
+  const bob=Math.sin(en.bobT*6)*3;
+  ctx.save(); ctx.translate(en.x,en.y+bob);
+  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0,en.r*0.9,en.r*0.9,en.r*0.35,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=en.slowT>0?"#8fd3ff":en.color;
+  ctx.beginPath(); ctx.ellipse(0,0,en.r,en.r*0.8,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.35)";
+  ctx.beginPath(); ctx.ellipse(-en.r*0.3,-en.r*0.25,en.r*0.28,en.r*0.18,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#12181a";
+  ctx.fillRect(-en.r*0.4,-en.r*0.1,en.r*0.16,en.r*0.16);
+  ctx.fillRect(en.r*0.2,-en.r*0.1,en.r*0.16,en.r*0.16);
+  ctx.restore();
+}
+function drawBeast(en){
+  ctx.save(); ctx.translate(en.x,en.y);
+  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0,en.r*0.9,en.r,en.r*0.35,0,0,Math.PI*2); ctx.fill();
+  const col=en.slowT>0?"#8fd3ff":en.color;
+  ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(0,0,en.r,en.r*0.75,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-en.r*0.7,-en.r*0.5); ctx.lineTo(-en.r*0.9,-en.r*1.1); ctx.lineTo(-en.r*0.3,-en.r*0.7); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(en.r*0.7,-en.r*0.5); ctx.lineTo(en.r*0.9,-en.r*1.1); ctx.lineTo(en.r*0.3,-en.r*0.7); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#1a1210";
+  ctx.fillRect(-en.r*0.35,-en.r*0.15,en.r*0.15,en.r*0.15);
+  ctx.fillRect(en.r*0.2,-en.r*0.15,en.r*0.15,en.r*0.15);
+  ctx.restore();
+}
+function drawSkeleton(en){
+  drawWizard(en.x,en.y,en.slowT>0?"#8fd3ff":en.color,1.0,false,en.facing);
+}
+function drawGhost(en){
+  ctx.save(); ctx.globalAlpha=0.85; ctx.translate(en.x,en.y+Math.sin(en.bobT*3)*4);
+  const col=en.slowT>0?"#8fd3ff":en.color;
+  ctx.fillStyle=col;
+  ctx.beginPath(); ctx.arc(0,-en.r*0.2,en.r*0.85,Math.PI,0);
+  ctx.lineTo(en.r*0.85,en.r*0.7);
+  for(let i=0;i<3;i++){ ctx.lineTo(en.r*0.85-((i+0.5)*(en.r*1.7/3)),en.r*0.4); ctx.lineTo(en.r*0.85-((i+1)*(en.r*1.7/3)),en.r*0.7); }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#2a1c33";
+  ctx.fillRect(-en.r*0.35,-en.r*0.3,en.r*0.16,en.r*0.16);
+  ctx.fillRect(en.r*0.15,-en.r*0.3,en.r*0.16,en.r*0.16);
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+function drawEnemy(en){
+  if(en.type==="slime") drawSlime(en);
+  else if(en.type==="beast") drawBeast(en);
+  else if(en.type==="skeleton") drawSkeleton(en);
+  else if(en.type==="ghost") drawGhost(en);
+
+  ctx.save(); ctx.translate(en.x,en.y-en.r-14);
+  ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(-18,0,36,5);
+  ctx.fillStyle="#ff4d6d"; ctx.fillRect(-18,0,36*clamp(en.hp/en.maxHp,0,1),5);
+  ctx.font="8px monospace"; ctx.textAlign="center";
+  ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillText(en.tier,1,-2);
+  ctx.fillStyle="#e8ecf5"; ctx.fillText(en.tier,0,-3);
+  ctx.restore();
+}
+
+function drawMinion(m){
+  ctx.save(); ctx.translate(m.x,m.y);
+  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0,10,10,4,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#c9d1e0";
+  ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#2a1c33"; ctx.fillRect(-4,-2,3,3); ctx.fillRect(1,-2,3,3);
+  ctx.restore();
+}
+
+function drawShadowClone(c){
+  ctx.save();
+  ctx.globalAlpha=Math.min(0.65,c.life/1.2);
+  drawWizard(c.x,c.y,"#2e1065",1.05,false,player.facing);
+  ctx.restore();
+}
+
+function drawStone(st){
+  const glow=1+Math.sin(st.t*4)*0.15;
+  ctx.save(); ctx.translate(st.x,st.y);
+  ctx.fillStyle="rgba(255,200,74,0.25)";
+  ctx.beginPath(); ctx.arc(0,0,26*glow,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#ffc84a";
+  ctx.beginPath();
+  ctx.moveTo(0,-16); ctx.lineTo(11,0); ctx.lineTo(0,16); ctx.lineTo(-11,0); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawProjectile(p){
+  ctx.save(); ctx.translate(p.x,p.y);
+  ctx.fillStyle=p.color;
+  ctx.shadowColor=p.color; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.arc(0,0,p.r,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawParticle(p){
+  ctx.save(); ctx.globalAlpha=clamp(p.life*2,0,1);
+  ctx.fillStyle=p.color;
+  ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function render(){
+  drawBackground();
+  ctx.save();
+  ctx.translate(-camera.x,-camera.y);
+
+  if(world.stone) drawStone(world.stone);
+
+  const drawables=[...world.enemies];
+  minions.forEach(m=>drawables.push({__minion:m}));
+  shadowClones.forEach(c=>drawables.push({__shadow:c}));
+  drawables.push({__player:true});
+  if(world.boss && !world.boss.dead) drawables.push(world.boss);
+  drawables.sort((a,b)=>(a.__player?player.y:a.__minion?a.__minion.y:a.__shadow?a.__shadow.y:a.y)-(b.__player?player.y:b.__minion?b.__minion.y:b.__shadow?b.__shadow.y:b.y));
+
+  drawables.forEach(d=>{
+    if(d.__player){
+      if(player.possessing){
+        const fakeEn={x:player.x,y:player.y,r:player.r,color:player.possessing.color,
+          type:player.possessing.type,slowT:0,bobT:animT,facing:player.facing};
+        if(fakeEn.type==="slime") drawSlime(fakeEn);
+        else if(fakeEn.type==="beast") drawBeast(fakeEn);
+        else if(fakeEn.type==="skeleton") drawSkeleton(fakeEn);
+        else if(fakeEn.type==="ghost") drawGhost(fakeEn);
+        else drawWizard(player.x,player.y,player.possessing.color,1.15,false,player.facing);
+      } else {
+        drawWizard(player.x,player.y,player.color,1.15,player.invuln>0&&Math.floor(player.invuln*20)%2===0,player.facing);
+      }
+    } else if(d.__minion){
+      drawMinion(d.__minion);
+    } else if(d.__shadow){
+      drawShadowClone(d.__shadow);
+    } else if(d.isBoss){
+      drawBoss(d);
+    } else {
+      drawEnemy(d);
+    }
+  });
+
+  projectiles.forEach(drawProjectile);
+  particles.forEach(drawParticle);
+
+  ctx.restore();
+}
+
+/* ================= main loop ================= */
+function loop(now){
+  const dt=Math.min(0.033,(now-lastTime)/1000);
+  lastTime=now;
+  animT+=dt;
+  if(mode==="playing"){
+    updatePlayer(dt);
+    updateMinions(dt);
+    updateShadowClones(dt);
+    world.enemies.forEach(en=>updateEnemy(en,dt));
+    if(world.boss && !world.boss.dead) updateEnemy(world.boss,dt);
+    updateProjectiles(dt);
+    updateParticles(dt);
+    updateCompass();
+    updateStone(dt);
+    checkBossSpawn();
+  } else {
+    updateParticles(dt);
+  }
+  if(zeusFlashT>0){
+    zeusFlashT=Math.max(0,zeusFlashT-dt);
+    document.getElementById("zeusFlash").style.opacity=(zeusFlashT/0.28*0.55).toFixed(2);
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ---- hot reload safety for open viewers holding state ---- */
+function snapshotState(){
+  return {mode,player:JSON.parse(JSON.stringify(player)),worldIndex:world.index};
+}
+try{
+  if(window.claude && window.claude.hot){
+    window.claude.hot.snapshot(snapshotState);
+  }
+}catch(e){}
+
+})();
+</script>
