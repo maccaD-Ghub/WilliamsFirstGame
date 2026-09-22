@@ -1,4 +1,4 @@
-# Spellwalker
+# WilliamsFirstGame — Spellwalker
 
 A free-range browser magic adventure built with William — explore procedurally generated worlds, defeat monsters and named bosses, level up your wizard, and unlock new classes as you progress.
 
