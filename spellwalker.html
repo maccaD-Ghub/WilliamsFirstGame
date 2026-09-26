@@ -99,6 +99,44 @@
     color:#2a022f;box-shadow:0 4px 0 #831843;}
   #novaBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #831843;}
   #novaBtn[hidden]{display:none;}
+  #natureBtn{width:60px;height:60px;font-size:8px;border-color:#86efac;
+    background:radial-gradient(circle at 35% 30%,#86efac,#4ade80);color:#052e12;
+    box-shadow:0 4px 0 #166534;}
+  #natureBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #166534;}
+  #natureBtn[hidden]{display:none;}
+  #freezeBtn{width:60px;height:60px;font-size:8px;border-color:#a5e8ff;
+    background:radial-gradient(circle at 35% 30%,#a5e8ff,#4fd1ff);color:#02222e;
+    box-shadow:0 4px 0 #0e5f79;}
+  #freezeBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #0e5f79;}
+  #freezeBtn[hidden]{display:none;}
+  #fireDashBtn{width:60px;height:60px;font-size:8px;border-color:#ffb08f;
+    background:radial-gradient(circle at 35% 30%,#ffb08f,#ff6b4a);color:#320d02;
+    box-shadow:0 4px 0 #8a2c0e;}
+  #fireDashBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a2c0e;}
+  #fireDashBtn[hidden]{display:none;}
+  #shockwaveBtn{width:60px;height:60px;font-size:8px;border-color:#c3c7d1;
+    background:radial-gradient(circle at 35% 30%,#c3c7d1,#8a8f9e);color:#15181f;
+    box-shadow:0 4px 0 #454a58;}
+  #shockwaveBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #454a58;}
+  #shockwaveBtn[hidden]{display:none;}
+
+  /* ---------- difficulty & achievements ---------- */
+  .diffRow{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+  .diffBtn{flex:1;padding:9px 6px;border-radius:10px;border:2px solid var(--panel-line);
+    background:#10152a;color:var(--muted);font-weight:800;font-size:12px;cursor:pointer;
+    font-family:inherit;}
+  .diffBtn.sel{border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 2px rgba(255,200,74,.2) inset;}
+  .achList{max-height:52vh;overflow-y:auto;margin:16px 0;text-align:left;}
+  .achRow{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;
+    background:#10152a;margin-bottom:8px;border-left:5px solid var(--panel-line);}
+  .achRow.unlocked{border-left-color:var(--gold);}
+  .achIcon{font-size:20px;flex:none;width:26px;text-align:center;}
+  .achRow h4{margin:0 0 2px;font-size:12.5px;}
+  .achRow p{margin:0;font-size:11px;color:var(--muted);font-weight:600;line-height:1.3;}
+  .achRow.locked h4,.achRow.locked p{opacity:.55;}
+  .statsBlock{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;text-align:left;}
+  .statsBlock .hud-card{padding:8px 10px;}
+  .statsBlock .hud-card b{color:var(--gold);}
 
   /* ---------- overlays ---------- */
   .overlay{position:fixed;inset:0;z-index:20;background:rgba(6,8,14,.86);
@@ -183,6 +221,10 @@
     <button id="shadowStepBtn" class="roundbtn" hidden>SHADOW</button>
     <button id="zeusBtn" class="roundbtn" hidden>ZEUS</button>
     <button id="novaBtn" class="roundbtn" hidden>NOVA</button>
+    <button id="natureBtn" class="roundbtn" hidden>BLESS</button>
+    <button id="freezeBtn" class="roundbtn" hidden>FREEZE</button>
+    <button id="fireDashBtn" class="roundbtn" hidden>BLAZE</button>
+    <button id="shockwaveBtn" class="roundbtn" hidden>SLAM</button>
     <button id="dashBtn" class="roundbtn" hidden>DASH</button>
     <button id="atkBtn" class="roundbtn">ATK</button>
   </div>
@@ -194,10 +236,28 @@
       <p class="subtitle">A free-range magic adventure. Explore, cast spells, defeat monsters<br>
         and bosses, and teleport across a whole realm of worlds.</p>
       <input id="nameInput" maxlength="14" placeholder="Type your wizard name...">
+      <div class="diffRow" id="diffRow">
+        <button class="diffBtn" data-d="easy">EASY</button>
+        <button class="diffBtn" data-d="normal">NORMAL</button>
+        <button class="diffBtn" data-d="hard">HARD</button>
+      </div>
       <div class="classGrid" id="classGrid"></div>
       <button class="bigbtn" id="beginBtn">Begin Adventure</button>
       <div><button class="bigbtn secondary" id="continueBtn" hidden>Continue Saved Game</button></div>
+      <div><button class="bigbtn secondary" id="bossRushBtn" hidden>⚔️ Boss Rush</button></div>
+      <div><button class="bigbtn secondary" id="achievementsBtn">🏆 Achievements</button></div>
       <p class="footnote">Move: drag the joystick (or WASD / arrow keys) &middot; Attack: tap ATK (or spacebar / click)</p>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div class="overlay" id="achievementsScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">🏆 ACHIEVEMENTS</h2>
+      <p class="subtitle" id="achSubtitle">Your Spellwalker trophies</p>
+      <div class="statsBlock" id="statsBlock"></div>
+      <div class="achList" id="achList"></div>
+      <button class="bigbtn" id="achCloseBtn">Close</button>
     </div>
   </div>
 
@@ -225,6 +285,8 @@
       <h2 class="title pixel" style="font-size:17px;">PAUSED</h2>
       <p class="subtitle" id="pauseInfo">Take a breather.</p>
       <button class="bigbtn" id="resumeBtn">Resume</button>
+      <div><button class="bigbtn secondary" id="muteBtn">🔊 Sound On</button></div>
+      <div><button class="bigbtn secondary" id="pauseAchBtn">🏆 Achievements</button></div>
       <div><button class="bigbtn secondary" id="resetBtn">Reset Game</button></div>
     </div>
   </div>
@@ -263,7 +325,9 @@ function saveGame(){
       shieldCharges:player.shieldCharges,speedMult:player.speedMult,multishot:player.multishot,
       poison:player.poison,minions:player.minionCount,canPossess:player.canPossess,
       xpMult:player.xpMult,itemSlots:player.itemSlots,items:player.items,hasShadowStep:player.hasShadowStep,
-      hasZeusJudgement:player.hasZeusJudgement,atkRate:player.atkRate,hasRainbowNova:player.hasRainbowNova};
+      hasZeusJudgement:player.hasZeusJudgement,atkRate:player.atkRate,hasRainbowNova:player.hasRainbowNova,
+      hasNatureNova:player.hasNatureNova,hasFreezeBurst:player.hasFreezeBurst,hasFireDash:player.hasFireDash,
+      hasShockwave:player.hasShockwave,pierce:player.pierce,hpRegen:player.hpRegen,thorns:player.thorns};
     localStorage.setItem("spellwalker_save",JSON.stringify(data));
   }catch(e){}
 }
@@ -287,25 +351,47 @@ function saveProgress(n){
 }
 let maxWorldReached=loadProgress();
 
+/* ---- difficulty: a simple global setting, not tied to any one save ---- */
+function loadDifficulty(){
+  try{
+    const d=localStorage.getItem("spellwalker_difficulty");
+    return (d==="easy"||d==="normal"||d==="hard")?d:"normal";
+  }catch(e){ return "normal"; }
+}
+function saveDifficulty(d){ try{ localStorage.setItem("spellwalker_difficulty",d); }catch(e){} }
+let difficulty=loadDifficulty();
+const DIFFICULTY_MULT={easy:{hp:0.7,dmg:0.7},normal:{hp:1,dmg:1},hard:{hp:1.4,dmg:1.3}};
+
+/* ---- lifetime stats & achievements: separate from the run save ---- */
+function loadStats(){
+  const fallback={totalKills:0,totalDeaths:0,bossesDefeated:[],classesPlayed:[],
+    achievementsUnlocked:[],bossRushBestTime:null};
+  try{
+    const raw=localStorage.getItem("spellwalker_stats");
+    const s=raw?JSON.parse(raw):null;
+    return Object.assign({},fallback,s||{});
+  }catch(e){ return fallback; }
+}
+function saveStats(){ try{ localStorage.setItem("spellwalker_stats",JSON.stringify(stats)); }catch(e){} }
+let stats=loadStats();
+
 /* ================= constants ================= */
 const CLASSES=[
-  {key:"nature",name:"Nature Wizard",color:"#4ade80",unlockWorld:1,tier:"X",desc:"Living magic heals you for part of the damage you deal.",
-    apply:p=>{p.lifesteal=(p.lifesteal||0)+0.08;}},
-  {key:"ice",name:"Ice Wizard",color:"#4fd1ff",unlockWorld:1,tier:"IX",desc:"Icy spells that slow every enemy they strike.",
-    apply:p=>{p.frost=true;}},
-  {key:"fire",name:"Fire Wizard",color:"#ff6b4a",unlockWorld:1,tier:"VIII",desc:"Blazing spells that hit harder. +15% spell damage.",
-    apply:p=>{p.dmgMult=(p.dmgMult||1)+0.15;}},
-  {key:"tank",name:"Stone Tank",color:"#8a8f9e",unlockWorld:1,tier:"VII",desc:"Thick hide. +30 max HP, but a touch slower on your feet.",
-    apply:p=>{p.maxHp+=30;p.hp=p.maxHp;p.speedMult=(p.speedMult||1)*0.92;}},
+  {key:"nature",name:"Nature Wizard",color:"#4ade80",unlockWorld:1,tier:"X",desc:"Living magic heals you for part of the damage you deal, plus Nature's Blessing — a burst of healing and a shield.",
+    apply:p=>{p.lifesteal=(p.lifesteal||0)+0.08;p.hasNatureNova=true;}},
+  {key:"ice",name:"Ice Wizard",color:"#4fd1ff",unlockWorld:1,tier:"IX",desc:"Icy spells that slow every enemy they strike, plus Deep Freeze — lock nearby enemies solid for a few seconds.",
+    apply:p=>{p.frost=true;p.hasFreezeBurst=true;}},
+  {key:"fire",name:"Fire Wizard",color:"#ff6b4a",unlockWorld:1,tier:"VIII",desc:"Blazing spells that hit harder (+15% spell damage), plus Blazing Dash — scorch everything around you.",
+    apply:p=>{p.dmgMult=(p.dmgMult||1)+0.15;p.hasFireDash=true;}},
+  {key:"tank",name:"Stone Tank",color:"#8a8f9e",unlockWorld:1,tier:"VII",desc:"Thick hide (+30 max HP, a touch slower on your feet), plus Shockwave Slam — smash and knock back everything nearby.",
+    apply:p=>{p.maxHp+=30;p.hp=p.maxHp;p.speedMult=(p.speedMult||1)*0.92;p.hasShockwave=true;}},
   {key:"shadow",name:"Shadow Lord",color:"#a78bfa",unlockWorld:3,tier:"VI",desc:"Starts with a Dash to teleport-blink past danger, plus Shadow Step — turn your own shadow into a duplicate that fights beside you.",
     apply:p=>{p.hasDash=true;p.hasShadowStep=true;}},
-  {key:"priest",name:"Priest",color:"#ffd54a",unlockWorld:5,tier:"V",desc:"A holy powerhouse: a shield for your first hit, +30% XP, 2 extra spell slots to choose from at every level-up, 2 extra item slots, +60% spell damage, and +80% max HP — a massive leap in power over the low-tier wizards.",
+  {key:"priest",name:"Priest",color:"#ffd54a",unlockWorld:5,tier:"V",desc:"A holy powerhouse: a shield for your first hit, +30% XP, 2 extra spell slots to choose from at every level-up, and 2 extra item slots.",
     apply:p=>{
       p.shieldCharges=(p.shieldCharges||0)+1;
       p.xpMult=(p.xpMult||1)+0.3;
       p.itemSlots=(p.itemSlots||3)+2;
-      p.dmgMult=(p.dmgMult||1)+0.6;
-      p.maxHp=(p.maxHp||100)*1.8; p.hp=p.maxHp;
     }},
   {key:"parasite",name:"Parasite Wizard",color:"#84cc16",unlockWorld:7,tier:"IV",desc:"Poison spells, plus a Possess ability to take over a nearby monster's body.",
     apply:p=>{p.poison=true;p.canPossess=true;}},
@@ -360,7 +446,11 @@ const PERKS=[
   {key:"bonelegion",name:"Bone Legion",color:"#c9d1e0",desc:"Summon a loyal minion that fights beside you.",apply:p=>{p.minionCount=(p.minionCount||0)+1;}},
   {key:"swift",name:"Swift Boots",color:"#60a5fa",desc:"+15% movement speed.",apply:p=>{p.speedMult=(p.speedMult||1)*1.15;}},
   {key:"twincast",name:"Twin Cast",color:"#fb923c",desc:"Fire an extra spell in a spread.",apply:p=>{p.multishot=(p.multishot||1)+1;}},
-  {key:"venom",name:"Venom Mark",color:"#84cc16",desc:"Your spells poison enemies over time.",apply:p=>{p.poison=true;}}
+  {key:"venom",name:"Venom Mark",color:"#84cc16",desc:"Your spells poison enemies over time.",apply:p=>{p.poison=true;}},
+  {key:"piercing",name:"Piercing Bolts",color:"#38bdf8",desc:"Your spells pierce through and hit multiple enemies.",apply:p=>{p.pierce=true;}},
+  {key:"regen",name:"Second Wind",color:"#f87171",desc:"Slowly regenerate HP over time.",apply:p=>{p.hpRegen=(p.hpRegen||0)+1;}},
+  {key:"haste",name:"Spell Haste",color:"#facc15",desc:"+15% attack speed — faster casting.",apply:p=>{p.atkRate=(p.atkRate||0.42)*0.87;}},
+  {key:"thorns",name:"Thorned Hide",color:"#65a30d",desc:"Enemies that touch you take damage back.",apply:p=>{p.thorns=(p.thorns||0)+8;}}
 ];
 
 const ITEMS=[
@@ -368,8 +458,42 @@ const ITEMS=[
   {key:"emerald",name:"Emerald Charm",color:"#4ade80",desc:"+10 max HP.",apply:p=>{p.maxHp+=10;p.hp=Math.min(p.maxHp,p.hp+10);}},
   {key:"sapphire",name:"Sapphire Charm",color:"#4fd1ff",desc:"+8% movement speed.",apply:p=>{p.speedMult=(p.speedMult||1)*1.08;}},
   {key:"amber",name:"Amber Charm",color:"#f59e0b",desc:"+5% lifesteal.",apply:p=>{p.lifesteal=(p.lifesteal||0)+0.05;}},
-  {key:"minionspell",name:"Minion Spell",color:"#c9d1e0",desc:"Summons one extra minion to fight at your side.",apply:p=>{p.minionCount=(p.minionCount||0)+1;}}
+  {key:"minionspell",name:"Minion Spell",color:"#c9d1e0",desc:"Summons one extra minion to fight at your side.",apply:p=>{p.minionCount=(p.minionCount||0)+1;}},
+  {key:"topaz",name:"Topaz Charm",color:"#fbbf24",desc:"+8% XP gained.",apply:p=>{p.xpMult=(p.xpMult||1)+0.08;}},
+  {key:"onyx",name:"Onyx Charm",color:"#4b5563",desc:"+6% spell damage.",apply:p=>{p.dmgMult=(p.dmgMult||1)+0.06;}},
+  {key:"pearl",name:"Pearl Charm",color:"#f5f3ff",desc:"+15 max HP and a small heal.",apply:p=>{p.maxHp+=15;p.hp=Math.min(p.maxHp,p.hp+15);}}
 ];
+
+const ACHIEVEMENTS=[
+  {key:"first_blood",icon:"🩸",name:"First Blood",desc:"Defeat your first monster.",check:s=>s.totalKills>=1},
+  {key:"monster_hunter",icon:"🗡️",name:"Monster Hunter",desc:"Defeat 100 monsters.",check:s=>s.totalKills>=100},
+  {key:"monster_slayer",icon:"⚔️",name:"Monster Slayer",desc:"Defeat 500 monsters.",check:s=>s.totalKills>=500},
+  {key:"first_boss",icon:"👑",name:"Boss Down",desc:"Defeat your first named boss.",check:s=>s.bossesDefeated.length>=1},
+  {key:"boss_hunter",icon:"🏹",name:"Boss Hunter",desc:"Defeat 5 different named bosses.",check:s=>s.bossesDefeated.length>=5},
+  {key:"boss_master",icon:"🏆",name:"Boss Master",desc:"Defeat all 10 named bosses.",check:s=>s.bossesDefeated.length>=10},
+  {key:"explorer",icon:"🧭",name:"Explorer",desc:"Reach World 10.",check:()=>maxWorldReached>=10},
+  {key:"wanderer",icon:"🗺️",name:"World Wanderer",desc:"Reach World 20.",check:()=>maxWorldReached>=20},
+  {key:"archmage",icon:"✨",name:"Archmage",desc:"Reach World 100.",check:()=>maxWorldReached>=100},
+  {key:"try_them_all",icon:"🎭",name:"Try Them All",desc:"Play a run with every wizard class.",check:s=>CLASSES.every(c=>s.classesPlayed.includes(c.key))},
+  {key:"survivor",icon:"💀",name:"Survivor",desc:"Get knocked out once and come back for more.",check:s=>s.totalDeaths>=1},
+  {key:"boss_rush_champ",icon:"🥇",name:"Boss Rush Champion",desc:"Complete Boss Rush mode.",check:s=>!!s.bossRushBestTime}
+];
+function checkAchievements(){
+  const newly=[];
+  ACHIEVEMENTS.forEach(a=>{
+    if(!stats.achievementsUnlocked.includes(a.key) && a.check(stats)){
+      stats.achievementsUnlocked.push(a.key);
+      newly.push(a);
+    }
+  });
+  if(newly.length){
+    saveStats();
+    newly.forEach((a,i)=>{
+      setTimeout(()=>showToast("🏆 Achievement unlocked: "+a.name+"!",3600),i*1700);
+    });
+    playSfx("achievement");
+  }
+}
 
 const ENEMY_TYPES=["slime","beast","skeleton","ghost"];
 // roman-numeral power tiers for the basic monster roster, weakest (IV) to strongest (I)
@@ -420,6 +544,107 @@ let mode="start"; // start | playing | levelup | worldclear | gameover | paused
 let lastTime=performance.now();
 let animT=0;
 let zeusFlashT=0; // countdown for the Zeus's Judgement screen flash
+let shakeT=0, shakeMag=0;   // screen shake
+let hitPauseT=0;            // brief global freeze on big impacts
+let loopStarted=false;      // guards against stacking multiple requestAnimationFrame loops
+let bossRushActive=false, bossRushIndex=0, bossRushStartTime=0, bossRushJustFinished=false;
+
+function cameraShake(mag,dur){ shakeMag=Math.max(shakeMag,mag); shakeT=Math.max(shakeT,dur); }
+function hitPause(t){ hitPauseT=Math.max(hitPauseT,t); }
+
+/* ================= audio: tiny synthesized sound effects + ambient pad ================= */
+/* No external audio files — everything here is generated with the Web Audio API so the
+   whole game stays a single self-contained file. Audio only starts after a user gesture
+   (browsers block autoplay), so initAudio() is called from the game-start buttons. */
+let audioCtx=null, masterGain=null, musicGain=null, sfxGain=null, musicTimer=null;
+function loadMuted(){ try{ return localStorage.getItem("spellwalker_muted")==="1"; }catch(e){ return false; } }
+function saveMuted(){ try{ localStorage.setItem("spellwalker_muted",audioMuted?"1":"0"); }catch(e){} }
+let audioMuted=loadMuted();
+function initAudio(){
+  if(audioCtx || audioMuted) return;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return;
+    audioCtx=new AC();
+    masterGain=audioCtx.createGain(); masterGain.gain.value=0.35; masterGain.connect(audioCtx.destination);
+    musicGain=audioCtx.createGain(); musicGain.gain.value=0.5; musicGain.connect(masterGain);
+    sfxGain=audioCtx.createGain(); sfxGain.gain.value=1.0; sfxGain.connect(masterGain);
+    startMusic();
+  }catch(e){ audioCtx=null; }
+}
+function toggleMute(){
+  audioMuted=!audioMuted;
+  saveMuted();
+  if(audioMuted){
+    stopMusic();
+    try{ if(audioCtx) audioCtx.suspend(); }catch(e){}
+  } else {
+    if(!audioCtx){ initAudio(); }
+    else { try{ audioCtx.resume(); }catch(e){} if(!musicTimer) startMusic(); }
+  }
+  const mb=document.getElementById("muteBtn");
+  if(mb) mb.textContent=audioMuted?"🔇 Sound Off":"🔊 Sound On";
+}
+const SFX_PRESETS={
+  cast:{type:"triangle",f1:520,f2:760,dur:0.08,vol:0.35},
+  hit:{type:"square",f1:180,f2:80,dur:0.07,vol:0.22},
+  death:{type:"sawtooth",f1:300,f2:60,dur:0.22,vol:0.32},
+  levelup:{type:"triangle",f1:440,f2:880,dur:0.35,vol:0.5},
+  boss:{type:"sawtooth",f1:110,f2:220,dur:0.5,vol:0.5},
+  bossdeath:{type:"sawtooth",f1:220,f2:40,dur:0.7,vol:0.5},
+  ability:{type:"square",f1:660,f2:990,dur:0.2,vol:0.4},
+  heal:{type:"sine",f1:520,f2:900,dur:0.3,vol:0.4},
+  freeze:{type:"sine",f1:900,f2:1400,dur:0.3,vol:0.4},
+  fire:{type:"sawtooth",f1:200,f2:500,dur:0.25,vol:0.4},
+  slam:{type:"square",f1:120,f2:50,dur:0.3,vol:0.45},
+  achievement:{type:"triangle",f1:660,f2:1320,dur:0.4,vol:0.5},
+  pickup:{type:"sine",f1:700,f2:1050,dur:0.15,vol:0.35}
+};
+function playSfx(kind){
+  if(!audioCtx||audioMuted) return;
+  try{
+    const p=SFX_PRESETS[kind]||SFX_PRESETS.hit;
+    const t=audioCtx.currentTime;
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    o.connect(g); g.connect(sfxGain);
+    o.type=p.type;
+    o.frequency.setValueAtTime(p.f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20,p.f2),t+p.dur);
+    g.gain.setValueAtTime(p.vol,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+p.dur);
+    o.start(t); o.stop(t+p.dur+0.02);
+  }catch(e){}
+}
+function startMusic(){
+  if(!audioCtx||audioMuted) return;
+  stopMusic();
+  // a gentle looping arpeggio pad so the game isn't silent — not a real soundtrack,
+  // just cozy background texture that costs nothing to ship as a single HTML file
+  const notes=[130.81,164.81,196.00,164.81]; // C3 E3 G3 E3
+  let step=0;
+  const playStep=()=>{
+    if(!audioCtx||audioMuted) return;
+    try{
+      const t=audioCtx.currentTime;
+      const o=audioCtx.createOscillator();
+      const g=audioCtx.createGain();
+      o.type="sine";
+      o.frequency.value=notes[step%notes.length];
+      o.connect(g); g.connect(musicGain);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.18,t+0.4);
+      g.gain.linearRampToValueAtTime(0,t+1.6);
+      o.start(t); o.stop(t+1.7);
+    }catch(e){}
+    step++;
+  };
+  playStep();
+  musicTimer=setInterval(playStep,1800);
+}
+function stopMusic(){
+  if(musicTimer){ clearInterval(musicTimer); musicTimer=null; }
+}
 
 const player={
   x:WORLD_W/2,y:WORLD_H/2,r:16,facing:0,
@@ -434,7 +659,12 @@ const player={
   xpMult:1,itemSlots:3,items:[],
   hasShadowStep:false,shadowStepCd:0,
   hasZeusJudgement:false,zeusCd:0,
-  hasRainbowNova:false,novaCd:0
+  hasRainbowNova:false,novaCd:0,
+  hasNatureNova:false,natureNovaCd:0,
+  hasFreezeBurst:false,freezeCd:0,
+  hasFireDash:false,fireDashCd:0,fireDashTimeLeft:0,
+  hasShockwave:false,shockwaveCd:0,
+  pierce:false,hpRegen:0,regenTimer:0,thorns:0
 };
 
 const world={index:0,biome:BIOMES[0],enemies:[],decor:[],bossSpawned:false,bossDefeated:false,
@@ -471,8 +701,9 @@ function makeEnemy(type,x,y,index,isBoss){
   const colors={slime:"#4ade80",beast:"#c98a52",skeleton:"#dfe3ee",ghost:"#b6c3ff"};
   const bossType=isBoss?BOSS_TYPES[index%BOSS_TYPES.length]:null;
   const tierMult=isBoss?(BOSS_TIER_MULT[bossType.tier]||1):1;
-  const baseHp=isBoss?(150+index*26)*tierMult:16+index*3.2;
-  const baseDmg=isBoss?(12+index*1.6)*tierMult:4+index*0.55;
+  const dm=DIFFICULTY_MULT[difficulty]||DIFFICULTY_MULT.normal;
+  const baseHp=(isBoss?(150+index*26)*tierMult:16+index*3.2)*dm.hp;
+  const baseDmg=(isBoss?(12+index*1.6)*tierMult:4+index*0.55)*dm.dmg;
   // speed scales much more gently than hp/damage so a top-tier boss is a real
   // bullet-sponge threat rather than literally unhittable
   const baseSpeed=isBoss?(128+index*0.6)*(1+(tierMult-1)*0.12):rand(58,86)+index*0.5;
@@ -483,8 +714,9 @@ function makeEnemy(type,x,y,index,isBoss){
     shape:isBoss?bossType.shape:type,
     tier:isBoss?bossType.tier:(ENEMY_TIERS[type]||"?"),
     vx:0,vy:0,hitCd:0,wanderT:rand(0,3),wanderDir:rand(0,Math.PI*2),
-    spawnX:x,spawnY:y,slowT:0,poisonT:0,poisonTick:0,
+    spawnX:x,spawnY:y,slowT:0,poisonT:0,poisonTick:0,frozenT:0,
     bossState:"idle",bossTimer:rand(0.8,1.4),dashChargeX:x,dashChargeY:y,
+    specialCd:isBoss?rand(4,6):0,enraged:false,
     facing:0,bobT:rand(0,10),invFlash:0};
 }
 
@@ -529,6 +761,19 @@ function buildClassGrid(){
 }
 buildClassGrid();
 
+function buildDiffRow(){
+  document.querySelectorAll("#diffRow .diffBtn").forEach(btn=>{
+    btn.classList.toggle("sel",btn.dataset.d===difficulty);
+    btn.onclick=()=>{ difficulty=btn.dataset.d; saveDifficulty(difficulty); buildDiffRow(); };
+  });
+}
+buildDiffRow();
+
+function refreshBossRushButton(){
+  document.getElementById("bossRushBtn").hidden=stats.bossesDefeated.length<BOSS_TYPES.length;
+}
+refreshBossRushButton();
+
 /* newly reaching a milestone world unlocks a wizard permanently (saved separately
    from the run itself, so restarting or dying never takes it away) */
 function markWorldReached(n){
@@ -553,6 +798,7 @@ function refreshContinueButton(){
   }
 }
 document.getElementById("continueBtn").addEventListener("click",()=>{
+  initAudio();
   const sg=loadSave();
   if(!sg) return;
   const cls=CLASSES.find(c=>c.key===sg.cls)||CLASSES[0];
@@ -560,7 +806,9 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
   // was tuned (e.g. extra item slots added later) still gets the current minimum
   const baseline={dmgMult:1,frost:false,lifesteal:0,hasDash:false,shieldCharges:0,
     speedMult:1,multishot:1,poison:false,minionCount:0,canPossess:false,
-    xpMult:1,itemSlots:3,items:[],hasShadowStep:false,hasZeusJudgement:false,atkRate:0.42,hasRainbowNova:false};
+    xpMult:1,itemSlots:3,items:[],hasShadowStep:false,hasZeusJudgement:false,atkRate:0.42,hasRainbowNova:false,
+    hasNatureNova:false,hasFreezeBurst:false,hasFireDash:false,hasShockwave:false,
+    pierce:false,hpRegen:0,thorns:0};
   cls.apply(baseline);
   Object.assign(player,{
     level:sg.level,xp:sg.xp,xpNext:sg.xpNext,maxHp:sg.maxHp,
@@ -582,9 +830,17 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
     hasShadowStep:!!sg.hasShadowStep||baseline.hasShadowStep,shadowStepCd:0,
     hasZeusJudgement:!!sg.hasZeusJudgement||baseline.hasZeusJudgement,zeusCd:0,
     atkRate:Math.min(sg.atkRate||0.42,baseline.atkRate),
-    hasRainbowNova:!!sg.hasRainbowNova||baseline.hasRainbowNova,novaCd:0
+    hasRainbowNova:!!sg.hasRainbowNova||baseline.hasRainbowNova,novaCd:0,
+    hasNatureNova:!!sg.hasNatureNova||baseline.hasNatureNova,natureNovaCd:0,
+    hasFreezeBurst:!!sg.hasFreezeBurst||baseline.hasFreezeBurst,freezeCd:0,
+    hasFireDash:!!sg.hasFireDash||baseline.hasFireDash,fireDashCd:0,fireDashTimeLeft:0,
+    hasShockwave:!!sg.hasShockwave||baseline.hasShockwave,shockwaveCd:0,
+    pierce:!!sg.pierce||baseline.pierce,
+    hpRegen:Math.max(sg.hpRegen||0,baseline.hpRegen),regenTimer:0,
+    thorns:Math.max(sg.thorns||0,baseline.thorns)
   });
   player.color=cls.color;
+  if(!stats.classesPlayed.includes(cls.key)){ stats.classesPlayed.push(cls.key); saveStats(); }
   startGame(sg.worldIndex);
 });
 refreshContinueButton();
@@ -599,21 +855,39 @@ function resetPlayerStats(){
     xpMult:1,itemSlots:3,items:[],
     hasShadowStep:false,shadowStepCd:0,
     hasZeusJudgement:false,zeusCd:0,
-    hasRainbowNova:false,novaCd:0
+    hasRainbowNova:false,novaCd:0,
+    hasNatureNova:false,natureNovaCd:0,
+    hasFreezeBurst:false,freezeCd:0,
+    hasFireDash:false,fireDashCd:0,fireDashTimeLeft:0,
+    hasShockwave:false,shockwaveCd:0,
+    pierce:false,hpRegen:0,regenTimer:0,thorns:0
   });
   shadowClones.length=0;
 }
 document.getElementById("beginBtn").addEventListener("click",()=>{
+  initAudio();
   const nm=document.getElementById("nameInput").value.trim();
   player.name=nm||"William";
   resetPlayerStats();
   const c=chosenClass||CLASSES[0];
   player.cls=c.key; player.color=c.color;
   c.apply(player);
-  startGame(0);
+  if(!stats.classesPlayed.includes(c.key)){ stats.classesPlayed.push(c.key); saveStats(); }
+  startGame(0,false);
+});
+document.getElementById("bossRushBtn").addEventListener("click",()=>{
+  initAudio();
+  const nm=document.getElementById("nameInput").value.trim();
+  player.name=nm||"William";
+  resetPlayerStats();
+  const c=chosenClass||CLASSES[0];
+  player.cls=c.key; player.color=c.color;
+  c.apply(player);
+  if(!stats.classesPlayed.includes(c.key)){ stats.classesPlayed.push(c.key); saveStats(); }
+  startGame(0,true);
 });
 
-function startGame(worldIndex){
+function startGame(worldIndex,bossRush){
   document.getElementById("startScreen").hidden=true;
   document.getElementById("hud").hidden=false;
   document.getElementById("joyBase").hidden=false;
@@ -625,26 +899,42 @@ function startGame(worldIndex){
   document.getElementById("shadowStepBtn").hidden=!player.hasShadowStep;
   document.getElementById("zeusBtn").hidden=!player.hasZeusJudgement;
   document.getElementById("novaBtn").hidden=!player.hasRainbowNova;
+  document.getElementById("natureBtn").hidden=!player.hasNatureNova;
+  document.getElementById("freezeBtn").hidden=!player.hasFreezeBurst;
+  document.getElementById("fireDashBtn").hidden=!player.hasFireDash;
+  document.getElementById("shockwaveBtn").hidden=!player.hasShockwave;
   shadowClones.length=0;
-  loadWorld(makeWorld(worldIndex));
+  if(bossRush){
+    bossRushActive=true; bossRushIndex=0; bossRushStartTime=performance.now();
+    startBossRushWorld();
+  } else {
+    loadWorld(makeWorld(worldIndex));
+  }
   mode="playing";
   updateHUD();
-  const bonusMsg=classBonusMessage(player.cls);
-  if(bonusMsg){
-    showToast(bonusMsg,4400);
-    setTimeout(()=>{ if(mode==="playing") showToast("Explore "+world.biome.name+"! Defeat every monster to summon the boss.",3200); },4600);
-  } else {
-    showToast("Explore "+world.biome.name+"! Defeat every monster to summon the boss.");
+  checkAchievements();
+  if(!bossRush){
+    const bonusMsg=classBonusMessage(player.cls);
+    if(bonusMsg){
+      showToast(bonusMsg,4400);
+      setTimeout(()=>{ if(mode==="playing") showToast("Explore "+world.biome.name+"! Defeat every monster to summon the boss.",3200); },4600);
+    } else {
+      showToast("Explore "+world.biome.name+"! Defeat every monster to summon the boss.");
+    }
   }
-  requestAnimationFrame(loop);
+  if(!loopStarted){ loopStarted=true; requestAnimationFrame(loop); }
 }
 function classBonusMessage(clsKey){
-  if(clsKey==="priest") return "Priest bonus: +60% damage, "+player.maxHp+" max HP, 5 spells to choose from at every level-up, +30% XP, and "+player.itemSlots+" item slots — a huge jump up from the low-tier wizards!";
+  if(clsKey==="priest") return "Priest bonus: a shield for your first hit, +30% XP, 5 spells to choose from at every level-up, and "+player.itemSlots+" item slots!";
   if(clsKey==="undead") return "Undead King bonus: "+player.minionCount+" minions to start, double max HP ("+player.maxHp+" HP), a guaranteed Bone Legion spell at every level-up, plus a bonus Minion Spell charm ("+player.itemSlots+" item slots total)!";
   if(clsKey==="storm") return "Storm Wizard bonus: spells fire 30% faster, plus Zeus's Judgement — tap ZEUS to smite every monster nearby with lightning!";
   if(clsKey==="shadow") return "Shadow Lord bonus: Dash unlocked, plus Shadow Step — tap SHADOW to turn your own shadow into a duplicate that fights at your side!";
   if(clsKey==="god") return "God Wizard bonus: +50% damage, "+player.maxHp+" max HP, +25% speed, and every ability — DASH, SHADOW, and ZEUS all ready to use!";
   if(clsKey==="rainbow") return "Rainbow God bonus: frost & poison spells, +10% lifesteal, "+player.maxHp+" max HP, plus Rainbow Nova — tap NOVA to erupt a ring of elemental bolts!";
+  if(clsKey==="nature") return "Nature Wizard bonus: 8% lifesteal, plus Nature's Blessing — tap BLESS to heal up and gain a shield!";
+  if(clsKey==="ice") return "Ice Wizard bonus: your spells slow enemies, plus Deep Freeze — tap FREEZE to lock nearby enemies solid!";
+  if(clsKey==="fire") return "Fire Wizard bonus: +15% spell damage, plus Blazing Dash — tap BLAZE to scorch everything around you!";
+  if(clsKey==="tank") return "Stone Tank bonus: +30 max HP, plus Shockwave Slam — tap SLAM to smash and knock back nearby enemies!";
   return null;
 }
 
@@ -685,6 +975,40 @@ function closePause(){
 }
 document.getElementById("pauseBtn").addEventListener("pointerdown",e=>{e.preventDefault();openPause();});
 document.getElementById("resumeBtn").addEventListener("click",closePause);
+document.getElementById("muteBtn").addEventListener("click",toggleMute);
+{ const mb=document.getElementById("muteBtn"); if(mb) mb.textContent=audioMuted?"🔇 Sound Off":"🔊 Sound On"; }
+
+/* ================= achievements screen ================= */
+function buildStatsBlock(){
+  const block=document.getElementById("statsBlock");
+  block.innerHTML=
+    '<div class="hud-card">Monsters defeated<br><b>'+stats.totalKills+'</b></div>'+
+    '<div class="hud-card">Bosses defeated<br><b>'+stats.bossesDefeated.length+'/'+BOSS_TYPES.length+'</b></div>'+
+    '<div class="hud-card">Furthest world<br><b>'+maxWorldReached+'</b></div>'+
+    '<div class="hud-card">Boss Rush best<br><b>'+(stats.bossRushBestTime?stats.bossRushBestTime.toFixed(1)+'s':'—')+'</b></div>';
+}
+function openAchievements(){
+  buildStatsBlock();
+  const list=document.getElementById("achList");
+  list.innerHTML="";
+  const unlockedCount=ACHIEVEMENTS.filter(a=>stats.achievementsUnlocked.includes(a.key)).length;
+  document.getElementById("achSubtitle").textContent=unlockedCount+"/"+ACHIEVEMENTS.length+" trophies unlocked";
+  ACHIEVEMENTS.forEach(a=>{
+    const unlocked=stats.achievementsUnlocked.includes(a.key);
+    const row=document.createElement("div");
+    row.className="achRow"+(unlocked?" unlocked":" locked");
+    row.innerHTML='<div class="achIcon">'+(unlocked?a.icon:"🔒")+'</div>'+
+      '<div><h4>'+a.name+'</h4><p>'+a.desc+'</p></div>';
+    list.appendChild(row);
+  });
+  document.getElementById("achievementsScreen").hidden=false;
+}
+function closeAchievements(){
+  document.getElementById("achievementsScreen").hidden=true;
+}
+document.getElementById("achievementsBtn").addEventListener("click",openAchievements);
+document.getElementById("pauseAchBtn").addEventListener("click",openAchievements);
+document.getElementById("achCloseBtn").addEventListener("click",closeAchievements);
 
 let resetArmed=false, resetArmTimer=null;
 const resetBtn=document.getElementById("resetBtn");
@@ -712,6 +1036,10 @@ window.addEventListener("keydown",e=>{
   if(e.key.toLowerCase()==="q") tryShadowStep();
   if(e.key.toLowerCase()==="r") tryZeusJudgement();
   if(e.key.toLowerCase()==="f") tryRainbowNova();
+  if(e.key.toLowerCase()==="g") tryNatureNova();
+  if(e.key.toLowerCase()==="c") tryFreezeBurst();
+  if(e.key.toLowerCase()==="b") tryFireDash();
+  if(e.key.toLowerCase()==="x") tryShockwave();
   if(e.key==="Escape"){
     if(mode==="playing") openPause();
     else if(mode==="paused") closePause();
@@ -751,6 +1079,10 @@ document.getElementById("dashBtn").addEventListener("pointerdown",e=>{e.preventD
 document.getElementById("shadowStepBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShadowStep();});
 document.getElementById("zeusBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryZeusJudgement();});
 document.getElementById("novaBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryRainbowNova();});
+document.getElementById("natureBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryNatureNova();});
+document.getElementById("freezeBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryFreezeBurst();});
+document.getElementById("fireDashBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryFireDash();});
+document.getElementById("shockwaveBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShockwave();});
 document.getElementById("possessBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryPossess();});
 
 canvas.addEventListener("pointerdown",e=>{
@@ -777,8 +1109,19 @@ function spawnProjectile(angle,friendly){
   const p={x:player.x+Math.cos(angle)*player.r,y:player.y+Math.sin(angle)*player.r,
     vx:Math.cos(angle)*player.projSpeed,vy:Math.sin(angle)*player.projSpeed,
     r:player.projRadius,dmg:player.baseDamage*player.dmgMult,color:player.color,
-    life:1.1,friendly:true,frost:player.frost,poison:player.poison};
+    life:1.1,friendly:true,frost:player.frost,poison:player.poison,pierce:!!player.pierce};
   projectiles.push(p);
+}
+// shared cleanup for any regular (non-boss) enemy kill: XP, loot roll, stats, achievements
+function killEnemy(en){
+  if(en.dead) return;
+  en.dead=true;
+  stats.totalKills++;
+  grantXP(2);
+  tryGrantItem(false);
+  spawnBurst(en.x,en.y,en.color,14);
+  playSfx("death");
+  checkAchievements();
 }
 function cast(){
   if(mode!=="playing") return;
@@ -795,6 +1138,7 @@ function cast(){
     spawnProjectile(angle+off,true);
   }
   spawnBurst(player.x,player.y,player.color,6);
+  playSfx("cast");
 }
 function castTowardScreen(sx,sy){
   if(mode!=="playing") return;
@@ -809,11 +1153,13 @@ function castTowardScreen(sx,sy){
     spawnProjectile(angle+off,true);
   }
   spawnBurst(player.x,player.y,player.color,6);
+  playSfx("cast");
 }
 function tryDash(){
   if(mode!=="playing"||!player.hasDash||player.dashCd>0) return;
   player.dashCd=3.0; player.dashTimeLeft=0.18; player.invuln=Math.max(player.invuln,0.24);
   spawnBurst(player.x,player.y,"#c9b4ff",14);
+  playSfx("ability");
 }
 
 /* ---- Shadow Lord: turn your shadow into a duplicate that fights beside you ---- */
@@ -822,6 +1168,7 @@ function tryShadowStep(){
   player.shadowStepCd=8.0;
   shadowClones.push({x:player.x,y:player.y,life:6.0,atkCd:0.2});
   spawnBurst(player.x,player.y,"#4c1d95",16);
+  playSfx("ability");
   showToast("Your shadow peels away and fights at your side!",2600);
 }
 
@@ -839,9 +1186,7 @@ function tryZeusJudgement(){
       hitAny=true;
     }
   });
-  world.enemies.forEach(en=>{
-    if(en.hp<=0 && !en.dead){ en.dead=true; grantXP(2); tryGrantItem(false); spawnBurst(en.x,en.y,en.color,14); }
-  });
+  world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
   world.enemies=world.enemies.filter(en=>!en.dead);
   if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
     world.boss.hp-=dmg;
@@ -851,6 +1196,9 @@ function tryZeusJudgement(){
   }
   spawnBurst(player.x,player.y,"#fde047",30);
   zeusFlashT=0.28;
+  cameraShake(14,0.35);
+  hitPause(0.06);
+  playSfx("ability");
   updateHUD();
   showToast(hitAny?"⚡ Zeus's Judgement crashes down!":"⚡ Zeus's Judgement strikes... but nothing was close enough!",2600);
 }
@@ -869,7 +1217,104 @@ function tryRainbowNova(){
       friendly:true,frost:true,poison:true});
   }
   spawnBurst(player.x,player.y,"#f472b6",26);
+  cameraShake(8,0.25);
+  playSfx("ability");
   showToast("🌈 Rainbow Nova erupts in every direction!",2400);
+}
+
+/* ---- Nature Wizard: Nature's Blessing — heal up and gain a shield ---- */
+function tryNatureNova(){
+  if(mode!=="playing"||!player.hasNatureNova||player.natureNovaCd>0) return;
+  player.natureNovaCd=9.0;
+  const heal=Math.round(player.maxHp*0.3);
+  player.hp=Math.min(player.maxHp,player.hp+heal);
+  player.shieldCharges=(player.shieldCharges||0)+1;
+  spawnBurst(player.x,player.y,"#4ade80",30);
+  playSfx("heal");
+  updateHUD(); saveGame();
+  showToast("🌿 Nature's Blessing heals "+heal+" HP and grants a shield!",2600);
+}
+
+/* ---- Ice Wizard: Deep Freeze — lock nearby enemies solid for a few seconds ---- */
+function tryFreezeBurst(){
+  if(mode!=="playing"||!player.hasFreezeBurst||player.freezeCd>0) return;
+  player.freezeCd=9.0;
+  const radius=380;
+  let hitAny=false;
+  world.enemies.forEach(en=>{
+    if(dist(player.x,player.y,en.x,en.y)<radius){
+      en.frozenT=Math.max(en.frozenT||0,2.2); en.slowT=Math.max(en.slowT,2.2); hitAny=true;
+    }
+  });
+  if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
+    // bosses resist a full freeze — a shorter chill instead of a hard stop
+    world.boss.frozenT=Math.max(world.boss.frozenT||0,1.3);
+    world.boss.slowT=Math.max(world.boss.slowT,1.3);
+    hitAny=true;
+  }
+  spawnBurst(player.x,player.y,"#bfe8ff",30);
+  playSfx("freeze");
+  showToast(hitAny?"❄️ Deep Freeze locks nearby enemies in ice!":"❄️ Deep Freeze finds nothing nearby to chill!",2400);
+}
+
+/* ---- Fire Wizard: Blazing Dash — scorch everything around you ---- */
+function tryFireDash(){
+  if(mode!=="playing"||!player.hasFireDash||player.fireDashCd>0) return;
+  player.fireDashCd=6.0;
+  player.fireDashTimeLeft=0.2; player.invuln=Math.max(player.invuln,0.26);
+  const dmg=player.baseDamage*player.dmgMult*1.2;
+  const reach=player.r+70;
+  world.enemies.forEach(en=>{
+    if(dist(player.x,player.y,en.x,en.y)<reach+en.r){
+      en.hp-=dmg; en.poisonT=Math.max(en.poisonT,2.4); en.poisonTick=Math.min(en.poisonTick||0.5,0.5);
+      spawnBurst(en.x,en.y,"#ff6b4a",10);
+    }
+  });
+  world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
+  world.enemies=world.enemies.filter(en=>!en.dead);
+  if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<reach+world.boss.r){
+    world.boss.hp-=dmg; world.boss.poisonT=Math.max(world.boss.poisonT,2.4); world.boss.poisonTick=Math.min(world.boss.poisonTick||0.5,0.5);
+    spawnBurst(world.boss.x,world.boss.y,"#ff6b4a",14);
+    if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
+  }
+  spawnBurst(player.x,player.y,"#ff6b4a",16);
+  playSfx("fire");
+  updateHUD();
+  showToast("🔥 Blazing Dash scorches everything nearby!",2400);
+}
+
+/* ---- Stone Tank: Shockwave Slam — smash and knock back nearby enemies ---- */
+function tryShockwave(){
+  if(mode!=="playing"||!player.hasShockwave||player.shockwaveCd>0) return;
+  player.shockwaveCd=8.0;
+  const radius=200;
+  const dmg=player.baseDamage*player.dmgMult*1.6;
+  let hitAny=false;
+  world.enemies.forEach(en=>{
+    const d=dist(player.x,player.y,en.x,en.y);
+    if(d<radius){
+      en.hp-=dmg;
+      const a=Math.atan2(en.y-player.y,en.x-player.x);
+      en.x+=Math.cos(a)*90; en.y+=Math.sin(a)*90;
+      en.slowT=Math.max(en.slowT,1.0);
+      spawnBurst(en.x,en.y,"#8a8f9e",10);
+      hitAny=true;
+    }
+  });
+  world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
+  world.enemies=world.enemies.filter(en=>!en.dead);
+  if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
+    world.boss.hp-=dmg*0.6; // bosses shrug off most of the knockback-damage so this can't trivially melt them
+    world.boss.slowT=Math.max(world.boss.slowT,0.8);
+    spawnBurst(world.boss.x,world.boss.y,"#8a8f9e",14);
+    hitAny=true;
+    if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
+  }
+  spawnBurst(player.x,player.y,"#8a8f9e",22);
+  cameraShake(10,0.3);
+  playSfx("slam");
+  updateHUD();
+  showToast(hitAny?"💥 Shockwave Slam sends enemies flying!":"💥 Shockwave Slam finds nothing nearby!",2400);
 }
 
 /* ---- Parasite: possess a nearby monster's body ---- */
@@ -887,7 +1332,7 @@ function meleeAttack(){
   };
   world.enemies.forEach(en=>dealHit(en));
   world.enemies.forEach(en=>{
-    if(en.hp<=0 && !en.dead){ en.dead=true; grantXP(2); tryGrantItem(false); spawnBurst(en.x,en.y,en.color,14); }
+    if(en.hp<=0 && !en.dead) killEnemy(en);
   });
   world.enemies=world.enemies.filter(e=>!e.dead);
   if(world.boss && !world.boss.dead){
@@ -895,6 +1340,7 @@ function meleeAttack(){
     if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
   }
   spawnBurst(player.x,player.y,biteColor,6);
+  playSfx("hit");
   updateHUD();
 }
 function tryPossess(){
@@ -970,6 +1416,7 @@ function tryGrantItem(guaranteed){
   player.items.push(item.key);
   updateHUD();
   saveGame();
+  playSfx("pickup");
   showToast("Found "+item.name+"! ("+player.items.length+"/"+player.itemSlots+" slots) "+item.desc,3400);
 }
 // fills a pool of `total` perk cards, optionally forcing a specific perk into
@@ -994,6 +1441,7 @@ function buildPerkPool(total,forcedKey){
 }
 function openLevelUp(){
   mode="levelup";
+  playSfx("levelup");
   const grid=document.getElementById("perkGrid");
   grid.innerHTML="";
   let slots=3, forcedKey=null;
@@ -1041,16 +1489,74 @@ function checkBossSpawn(){
     world.bossSpawned=true;
     document.getElementById("compassWrap").hidden=false;
     document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier;
+    playSfx("boss");
     showToast(world.boss.name+" (Tier "+world.boss.tier+") has awakened! Follow the golden arrow.",4200);
   }
 }
 function onBossDefeated(){
   world.bossDefeated=true;
   document.getElementById("compassWrap").hidden=true;
-  world.stone={x:world.boss.x,y:world.boss.y,t:0};
+  if(!stats.bossesDefeated.includes(world.boss.name)){
+    stats.bossesDefeated.push(world.boss.name);
+    saveStats();
+  }
+  cameraShake(12,0.4);
+  hitPause(0.08);
+  playSfx("bossdeath");
+  checkAchievements();
+  refreshBossRushButton();
   grantXP(12);
+  if(bossRushActive){
+    bossRushIndex++;
+    if(bossRushIndex>=BOSS_TYPES.length){
+      finishBossRush();
+    } else {
+      showToast(world.boss.name+" defeated! Next boss incoming...",2200);
+      setTimeout(()=>{ if(bossRushActive) startBossRushWorld(); },1800);
+    }
+    return;
+  }
+  world.stone={x:world.boss.x,y:world.boss.y,t:0};
   tryGrantItem(true);
   showToast("The boss dropped a Teleport Stone! Walk into it to travel onward.",4200);
+}
+// ---- Boss Rush: fight all 10 named bosses back-to-back, in order ----
+function startBossRushWorld(){
+  const idx=bossRushIndex;
+  const biome=BIOMES[idx%BIOMES.length];
+  const spawn={x:WORLD_W/2,y:WORLD_H/2};
+  const decor=[];
+  for(let i=0;i<26;i++){
+    decor.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),s:rand(0.7,1.6),rot:rand(0,Math.PI*2)});
+  }
+  const w={index:idx,biome,enemies:[],decor,bossSpawned:true,bossDefeated:false,boss:null,stone:null,spawn};
+  loadWorld(w);
+  let bx,by;
+  do{ bx=rand(120,WORLD_W-120); by=rand(120,WORLD_H-120); }
+  while(dist(bx,by,world.spawn.x,world.spawn.y)<500);
+  // idx is already 0..BOSS_TYPES.length-1, so makeEnemy's index%BOSS_TYPES.length
+  // picks the exact boss for this stage of the run, in named order
+  world.boss=makeEnemy("boss",bx,by,idx,true);
+  document.getElementById("compassWrap").hidden=false;
+  document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier+" · "+(idx+1)+"/"+BOSS_TYPES.length;
+  playSfx("boss");
+  showToast("Boss Rush "+(idx+1)+"/"+BOSS_TYPES.length+": "+world.boss.name+" (Tier "+world.boss.tier+") awaits!",3600);
+}
+function finishBossRush(){
+  bossRushActive=false;
+  const elapsed=(performance.now()-bossRushStartTime)/1000;
+  if(stats.bossRushBestTime===null || elapsed<stats.bossRushBestTime){
+    stats.bossRushBestTime=elapsed;
+  }
+  saveStats();
+  checkAchievements();
+  bossRushJustFinished=true;
+  const mins=Math.floor(elapsed/60), secs=Math.floor(elapsed%60);
+  document.getElementById("wcTitle").textContent="BOSS RUSH COMPLETE!";
+  document.getElementById("wcSubtitle").textContent="You defeated all "+BOSS_TYPES.length+" bosses in "+mins+"m "+secs+"s, "+player.name+"!";
+  document.getElementById("worldClearScreen").hidden=false;
+  mode="worldclear";
+  playSfx("achievement");
 }
 function nextWorld(){
   if(player.possessing) exitPossession(true);
@@ -1071,6 +1577,11 @@ function nextWorld(){
 }
 document.getElementById("wcContinueBtn").addEventListener("click",()=>{
   document.getElementById("worldClearScreen").hidden=true;
+  if(bossRushJustFinished){
+    bossRushJustFinished=false;
+    returnToStartMenu();
+    return;
+  }
   loadWorld(makeWorld(world.index+1));
   mode="playing";
   updateHUD();
@@ -1088,10 +1599,12 @@ function returnToStartMenu(){
   player.possessing=null; player.hostStats=null;
   shadowClones.length=0;
   zeusFlashT=0;
+  bossRushActive=false;
   document.getElementById("zeusFlash").style.opacity="0";
   mode="start";
   refreshContinueButton();
   buildClassGrid();
+  refreshBossRushButton();
   document.getElementById("startScreen").hidden=false;
 }
 
@@ -1114,6 +1627,10 @@ function updatePlayer(dt){
     spd*=4.2;
     dx=Math.cos(player.facing); dy=Math.sin(player.facing);
     player.dashTimeLeft-=dt;
+  } else if(player.fireDashTimeLeft>0){
+    spd*=2.4;
+    dx=Math.cos(player.facing); dy=Math.sin(player.facing);
+    player.fireDashTimeLeft-=dt;
   }
   player.x=player.x+dx*spd*dt;
   player.y=player.y+dy*spd*dt;
@@ -1125,6 +1642,21 @@ function updatePlayer(dt){
   player.shadowStepCd=Math.max(0,player.shadowStepCd-dt);
   player.zeusCd=Math.max(0,player.zeusCd-dt);
   player.novaCd=Math.max(0,player.novaCd-dt);
+  player.natureNovaCd=Math.max(0,player.natureNovaCd-dt);
+  player.freezeCd=Math.max(0,player.freezeCd-dt);
+  player.fireDashCd=Math.max(0,player.fireDashCd-dt);
+  player.shockwaveCd=Math.max(0,player.shockwaveCd-dt);
+
+  if(player.hpRegen>0 && player.hp>0){
+    player.regenTimer-=dt;
+    if(player.regenTimer<=0){
+      player.regenTimer=1.0;
+      if(player.hp<player.maxHp){
+        player.hp=Math.min(player.maxHp,player.hp+player.hpRegen);
+        updateHUD();
+      }
+    }
+  }
 
   // auto-attack whatever's in range while running, so you don't have to
   // stop moving (or free up a finger from the joystick) to fight back.
@@ -1155,6 +1687,14 @@ function updatePlayer(dt){
   if(!zb.hidden) zb.style.opacity=player.zeusCd>0?"0.45":"1";
   const nb=document.getElementById("novaBtn");
   if(!nb.hidden) nb.style.opacity=player.novaCd>0?"0.45":"1";
+  const natb=document.getElementById("natureBtn");
+  if(!natb.hidden) natb.style.opacity=player.natureNovaCd>0?"0.45":"1";
+  const frzb=document.getElementById("freezeBtn");
+  if(!frzb.hidden) frzb.style.opacity=player.freezeCd>0?"0.45":"1";
+  const fdb=document.getElementById("fireDashBtn");
+  if(!fdb.hidden) fdb.style.opacity=player.fireDashCd>0?"0.45":"1";
+  const swb=document.getElementById("shockwaveBtn");
+  if(!swb.hidden) swb.style.opacity=player.shockwaveCd>0?"0.45":"1";
 
   camera.x=player.x-viewW/2;
   camera.y=player.y-viewH/2;
@@ -1212,12 +1752,46 @@ function updateEnemy(en,dt){
   en.bobT+=dt;
   en.hitCd=Math.max(0,en.hitCd-dt);
   en.slowT=Math.max(0,en.slowT-dt);
+  en.frozenT=Math.max(0,(en.frozenT||0)-dt);
   if(en.poisonT>0){
     en.poisonT-=dt; en.poisonTick-=dt;
     if(en.poisonTick<=0){ en.hp-=4; en.poisonTick=0.5; spawnBurst(en.x,en.y,"#84cc16",3); }
   }
-  const slowFactor=en.slowT>0?0.45:1;
   const dToPlayer=dist(en.x,en.y,player.x,player.y);
+
+  if(en.frozenT>0){
+    // fully locked in ice: no movement, no AI, no boss specials
+    en.vx=0; en.vy=0;
+    en.x=en.x+en.vx*dt;
+    en.y=en.y+en.vy*dt;
+    if(!player.possessing && dToPlayer<en.r+player.r && en.hitCd<=0 && player.invuln<=0){
+      en.hitCd=0.9;
+      if(player.shieldCharges>0){
+        player.shieldCharges--; spawnBurst(player.x,player.y,"#ffd54a",10);
+      } else {
+        player.hp-=en.damage;
+        player.invuln=0.6;
+        spawnBurst(player.x,player.y,"#ff4d6d",8);
+        if(player.hp<=0){
+          player.hp=0;
+          if(player.possessing) exitPossession(false);
+          else triggerGameOver();
+        }
+      }
+      if(player.thorns>0){
+        en.hp-=player.thorns;
+        spawnBurst(en.x,en.y,"#65a30d",6);
+        if(en.hp<=0 && !en.dead){
+          if(en.isBoss){ en.dead=true; onBossDefeated(); }
+          else killEnemy(en);
+        }
+      }
+      updateHUD();
+    }
+    return;
+  }
+
+  const slowFactor=en.slowT>0?0.45:1;
   let tx=en.x, ty=en.y;
 
   if(player.possessing){
@@ -1249,6 +1823,19 @@ function updateEnemy(en,dt){
     }
     if(en.bossState==="telegraph"){ en.vx=0; en.vy=0; }
     if(en.bossState==="dashing"){ en.vx*=0.985; en.vy*=0.985; }
+    // enrage once below half HP: a one-time speed & aggression jump
+    if(!en.enraged && en.hp<=en.maxHp*0.5){
+      en.enraged=true;
+      en.speed*=1.35;
+      spawnBurst(en.x,en.y,"#ff2d55",20);
+      cameraShake(10,0.3);
+      showToast(en.name+" becomes enraged!",2400);
+    }
+    en.specialCd=(en.specialCd||0)-dt;
+    if(en.specialCd<=0){
+      triggerBossSpecial(en);
+      en.specialCd=rand(5,7.5);
+    }
   } else {
     const aggro=260;
     if(dToPlayer<aggro){
@@ -1283,12 +1870,49 @@ function updateEnemy(en,dt){
         else triggerGameOver();
       }
     }
+    if(player.thorns>0){
+      en.hp-=player.thorns;
+      spawnBurst(en.x,en.y,"#65a30d",6);
+      if(en.hp<=0 && !en.dead){
+        if(en.isBoss){ en.dead=true; onBossDefeated(); }
+        else killEnemy(en);
+      }
+    }
     updateHUD();
   }
 }
 
+function triggerBossSpecial(en){
+  const radius=140;
+  spawnBurst(en.x,en.y,en.color,24);
+  playSfx("boss");
+  const d=dist(en.x,en.y,player.x,player.y);
+  if(d<radius+player.r && player.invuln<=0){
+    if(player.shieldCharges>0){
+      player.shieldCharges--; spawnBurst(player.x,player.y,"#ffd54a",10);
+    } else {
+      const dmg=en.damage*1.4;
+      player.hp=Math.max(0,player.hp-dmg);
+      player.invuln=0.5;
+      spawnBurst(player.x,player.y,"#ff2d55",14);
+      cameraShake(8,0.25);
+      if(player.hp<=0){
+        if(player.possessing) exitPossession(false);
+        else triggerGameOver();
+      }
+    }
+    updateHUD();
+  }
+  showToast(en.name+" unleashes a devastating attack!",1800);
+}
+
 function triggerGameOver(){
   mode="gameover";
+  stats.totalDeaths++;
+  saveStats();
+  checkAchievements();
+  playSfx("death");
+  if(bossRushActive) bossRushActive=false;
   document.getElementById("gameOverScreen").hidden=false;
 }
 
@@ -1296,38 +1920,38 @@ function updateProjectiles(dt){
   for(let i=projectiles.length-1;i>=0;i--){
     const p=projectiles[i];
     p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
-    let hit=false;
-    if(p.life<=0) hit=true;
-    if(!hit && p.friendly){
+    let remove=p.life<=0;
+    if(p.friendly){
+      if(!p.hitEns) p.hitEns=[];
       for(const en of world.enemies){
-        if(!en.dead && dist(p.x,p.y,en.x,en.y)<en.r+p.r){
+        if(en.dead || p.hitEns.includes(en)) continue;
+        if(dist(p.x,p.y,en.x,en.y)<en.r+p.r){
           en.hp-=p.dmg;
           if(p.frost) en.slowT=1.4;
           if(p.poison){ en.poisonT=3; en.poisonTick=0.01; }
           if(player.lifesteal>0){ player.hp=Math.min(player.maxHp,player.hp+p.dmg*player.lifesteal); updateHUD(); }
           spawnBurst(en.x,en.y,p.color,6);
-          hit=true;
-          if(en.hp<=0){
-            en.dead=true; grantXP(2); tryGrantItem(false);
-            spawnBurst(en.x,en.y,en.color,14);
-          }
+          playSfx("hit");
+          if(en.hp<=0 && !en.dead) killEnemy(en);
+          if(p.pierce){ p.hitEns.push(en); } else { remove=true; }
           break;
         }
       }
-      if(!hit && world.boss && !world.boss.dead && dist(p.x,p.y,world.boss.x,world.boss.y)<world.boss.r+p.r){
+      if(world.boss && !world.boss.dead && !p.hitEns.includes(world.boss) && dist(p.x,p.y,world.boss.x,world.boss.y)<world.boss.r+p.r){
         world.boss.hp-=p.dmg;
         if(p.frost) world.boss.slowT=1.0;
         if(p.poison){ world.boss.poisonT=3; world.boss.poisonTick=0.01; }
         if(player.lifesteal>0){ player.hp=Math.min(player.maxHp,player.hp+p.dmg*player.lifesteal); updateHUD(); }
         spawnBurst(world.boss.x,world.boss.y,p.color,8);
-        hit=true;
+        playSfx("hit");
         if(world.boss.hp<=0 && !world.boss.dead){
           world.boss.dead=true;
           onBossDefeated();
         }
+        if(p.pierce){ p.hitEns.push(world.boss); } else { remove=true; }
       }
     }
-    if(hit) projectiles.splice(i,1);
+    if(remove) projectiles.splice(i,1);
   }
   world.enemies=world.enemies.filter(en=>!en.dead);
 }
@@ -1580,6 +2204,11 @@ function drawParticle(p){
 }
 
 function render(){
+  const realCamX=camera.x, realCamY=camera.y;
+  if(shakeT>0){
+    camera.x+=rand(-1,1)*shakeMag;
+    camera.y+=rand(-1,1)*shakeMag;
+  }
   drawBackground();
   ctx.save();
   ctx.translate(-camera.x,-camera.y);
@@ -1621,13 +2250,24 @@ function render(){
   particles.forEach(drawParticle);
 
   ctx.restore();
+  camera.x=realCamX; camera.y=realCamY;
 }
 
 /* ================= main loop ================= */
 function loop(now){
   const dt=Math.min(0.033,(now-lastTime)/1000);
   lastTime=now;
+  if(hitPauseT>0){
+    hitPauseT=Math.max(0,hitPauseT-dt);
+    render();
+    requestAnimationFrame(loop);
+    return;
+  }
   animT+=dt;
+  if(shakeT>0){
+    shakeT=Math.max(0,shakeT-dt);
+    if(shakeT<=0) shakeMag=0;
+  }
   if(mode==="playing"){
     updatePlayer(dt);
     updateMinions(dt);
