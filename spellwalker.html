@@ -176,12 +176,15 @@
 
   /* ---------- overlays ---------- */
   .overlay{position:fixed;inset:0;z-index:20;background:rgba(6,8,14,.86);
-    display:flex;align-items:center;justify-content:center;padding:20px;
+    display:block;text-align:center;padding:20px;
     padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));
-    overflow:auto;}
+    overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .overlay[hidden]{display:none;}
+  /* margin:auto (not flex/grid align-items:center) so an overlay taller than the
+     viewport can still be scrolled all the way back up to its very top — centering
+     with align-items:center clips and traps the top edge once content overflows */
   .sheet{background:var(--panel);border:1px solid var(--panel-line);border-radius:18px;
-    padding:26px;max-width:640px;width:100%;text-align:center;}
+    padding:26px;max-width:640px;width:100%;margin:0 auto;text-align:center;}
   .title{font-size:22px;line-height:1.5;color:var(--gold);margin:0 0 6px;
     text-shadow:0 0 14px rgba(255,200,74,.4);}
   .subtitle{color:var(--muted);font-size:14px;margin:0 0 22px;font-weight:600;}
