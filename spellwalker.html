@@ -137,6 +137,42 @@
   .statsBlock{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;text-align:left;}
   .statsBlock .hud-card{padding:8px 10px;}
   .statsBlock .hud-card b{color:var(--gold);}
+  .lbList{margin:8px 0 16px;text-align:left;}
+  .lbRow{display:flex;justify-content:space-between;background:#10152a;border-radius:8px;
+    padding:6px 10px;margin-bottom:5px;font-size:12px;font-weight:700;}
+  .lbRow span:last-child{color:var(--gold);}
+  .toggleRow{display:flex;gap:8px;justify-content:center;margin:10px 0;}
+  .toggleBtn{flex:1;padding:8px 6px;border-radius:10px;border:2px solid var(--panel-line);
+    background:#10152a;color:var(--muted);font-weight:800;font-size:11.5px;cursor:pointer;
+    font-family:inherit;}
+  .toggleBtn.sel{border-color:var(--good);color:var(--good);box-shadow:0 0 0 2px rgba(74,222,128,.2) inset;}
+  .loadoutRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;}
+  @media (max-width:460px){.loadoutRow{grid-template-columns:repeat(3,1fr);}}
+  .loadoutChip{border:2px solid var(--panel-line);border-radius:10px;padding:8px 4px;
+    background:#10152a;color:var(--muted);font-weight:800;font-size:10.5px;cursor:pointer;
+    text-align:center;font-family:inherit;}
+  .loadoutChip.sel{border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 2px rgba(255,200,74,.2) inset;}
+  .shopGrid{display:grid;grid-template-columns:1fr;gap:10px;margin:16px 0;text-align:left;}
+  .shopRow{display:flex;align-items:center;gap:12px;background:#10152a;border-radius:12px;
+    padding:10px 12px;border-left:5px solid var(--accent);}
+  .shopRow .shopInfo{flex:1;}
+  .shopRow h4{margin:0 0 3px;font-size:13px;}
+  .shopRow p{margin:0;font-size:11.5px;color:var(--muted);font-weight:600;}
+  .shopBuyBtn{padding:8px 14px;border-radius:10px;border:none;background:linear-gradient(180deg,#ffdc8f,var(--gold));
+    color:#2a1c02;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 3px 0 #8a5f10;white-space:nowrap;}
+  .shopBuyBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #8a5f10;}
+  .shopBuyBtn:disabled{opacity:.4;cursor:default;}
+  #goldRow{color:var(--gold);font-weight:800;font-size:13px;margin-bottom:10px;}
+  textarea#saveCodeBox{width:100%;min-height:110px;border-radius:10px;border:1px solid var(--panel-line);
+    background:#0d1120;color:var(--ink);font-family:monospace;font-size:11px;padding:10px;
+    margin-bottom:14px;resize:vertical;}
+  #minimap{position:fixed;bottom:calc(150px + env(safe-area-inset-bottom,0px));
+    left:calc(22px + env(safe-area-inset-left,0px));width:110px;height:80px;
+    border-radius:10px;border:1px solid var(--panel-line);background:rgba(11,15,26,.65);z-index:5;
+    display:block;}
+  #minimap[hidden]{display:none;}
+  .storyText{text-align:left;color:var(--ink);font-size:13.5px;line-height:1.7;font-weight:600;
+    max-height:50vh;overflow-y:auto;margin-bottom:18px;}
 
   /* ---------- overlays ---------- */
   .overlay{position:fixed;inset:0;z-index:20;background:rgba(6,8,14,.86);
@@ -186,6 +222,7 @@
 
 <div id="app">
   <canvas id="game"></canvas>
+  <canvas id="minimap" hidden></canvas>
 
   <div id="hud" hidden>
     <div class="hud-row">
@@ -202,6 +239,7 @@
     <div class="hud-row">
       <div class="hud-card"><span id="worldTag">WORLD 1</span> &nbsp; <span id="worldName">Emerald Forest</span></div>
       <div class="hud-card" id="itemsCard" hidden>Charms: <span id="itemsLabel">0/3</span></div>
+      <div class="hud-card">🪙 <span id="goldLabel">0</span></div>
     </div>
   </div>
 
@@ -242,11 +280,20 @@
         <button class="diffBtn" data-d="hard">HARD</button>
       </div>
       <div class="classGrid" id="classGrid"></div>
+      <p class="subtitle" style="margin:0 0 6px;font-size:12px;">Starting perk (optional)</p>
+      <div class="loadoutRow" id="loadoutRow"></div>
       <button class="bigbtn" id="beginBtn">Begin Adventure</button>
       <div><button class="bigbtn secondary" id="continueBtn" hidden>Continue Saved Game</button></div>
       <div><button class="bigbtn secondary" id="bossRushBtn" hidden>⚔️ Boss Rush</button></div>
+      <div class="toggleRow" id="bossRushToggles" hidden>
+        <button class="toggleBtn" id="brRandomToggle">🔀 Random Order</button>
+        <button class="toggleBtn" id="brEndlessToggle">♾️ Endless</button>
+      </div>
+      <div><button class="bigbtn secondary" id="shopBtn">🪙 Shop</button></div>
       <div><button class="bigbtn secondary" id="achievementsBtn">🏆 Achievements</button></div>
-      <p class="footnote">Move: drag the joystick (or WASD / arrow keys) &middot; Attack: tap ATK (or spacebar / click)</p>
+      <div><button class="bigbtn secondary" id="storyBtn">📖 Story</button></div>
+      <div><button class="bigbtn secondary" id="saveCodeBtn">💾 Backup Save</button></div>
+      <p class="footnote">Move: drag the joystick (or WASD / arrow keys) &middot; Attack: tap ATK (or spacebar / click) &middot; Gamepad supported</p>
     </div>
   </div>
 
@@ -256,8 +303,46 @@
       <h2 class="title pixel" style="font-size:17px;">🏆 ACHIEVEMENTS</h2>
       <p class="subtitle" id="achSubtitle">Your Spellwalker trophies</p>
       <div class="statsBlock" id="statsBlock"></div>
+      <p class="subtitle" style="margin:0 0 6px;font-size:12px;">Boss Rush best times</p>
+      <div class="lbList" id="lbList"></div>
       <div class="achList" id="achList"></div>
       <button class="bigbtn" id="achCloseBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- SHOP -->
+  <div class="overlay" id="shopScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">🪙 SHOP</h2>
+      <p class="subtitle">Permanent upgrades for every future run</p>
+      <div id="goldRow">Gold: 0</div>
+      <div class="shopGrid" id="shopGrid"></div>
+      <button class="bigbtn" id="shopCloseBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- STORY -->
+  <div class="overlay" id="storyScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">📖 THE STORY</h2>
+      <div class="storyText">
+        <p>Long ago the realm was one connected land, until a shattering spell tore it into a hundred drifting worlds, each guarded by a monster twisted by the magic that made it.</p>
+        <p>You are a Spellwalker — one of the rare few who can step between these worlds. Every monster you clear and every boss you defeat weakens the old barrier a little more, and every wizard you awaken along the way adds their power to yours.</p>
+        <p>Nobody knows what waits past World 100. Only Spellwalkers who have gone that far are starting to find out.</p>
+      </div>
+      <button class="bigbtn" id="storyCloseBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- SAVE CODE (backup / restore) -->
+  <div class="overlay" id="saveCodeScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;" id="saveCodeTitle">💾 BACKUP SAVE</h2>
+      <p class="subtitle" id="saveCodeSubtitle">Copy this code somewhere safe, or paste one in to restore.</p>
+      <textarea id="saveCodeBox" spellcheck="false"></textarea>
+      <div><button class="bigbtn secondary" id="saveCodeCopyBtn">📋 Copy Code</button></div>
+      <div><button class="bigbtn secondary" id="saveCodeImportBtn">📥 Import Pasted Code</button></div>
+      <button class="bigbtn" id="saveCodeCloseBtn">Close</button>
     </div>
   </div>
 
@@ -365,11 +450,15 @@ const DIFFICULTY_MULT={easy:{hp:0.7,dmg:0.7},normal:{hp:1,dmg:1},hard:{hp:1.4,dm
 /* ---- lifetime stats & achievements: separate from the run save ---- */
 function loadStats(){
   const fallback={totalKills:0,totalDeaths:0,bossesDefeated:[],classesPlayed:[],
-    achievementsUnlocked:[],bossRushBestTime:null};
+    achievementsUnlocked:[],bossRushBestTime:null,bossRushBestTimes:{},bossRushEndlessBest:0,
+    gold:0,goldEarned:0,metaUpgrades:{hp:0,dmg:0,speed:0,xp:0,itemSlot:0}};
   try{
     const raw=localStorage.getItem("spellwalker_stats");
     const s=raw?JSON.parse(raw):null;
-    return Object.assign({},fallback,s||{});
+    const merged=Object.assign({},fallback,s||{});
+    merged.bossRushBestTimes=Object.assign({},fallback.bossRushBestTimes,(s&&s.bossRushBestTimes)||{});
+    merged.metaUpgrades=Object.assign({},fallback.metaUpgrades,(s&&s.metaUpgrades)||{});
+    return merged;
   }catch(e){ return fallback; }
 }
 function saveStats(){ try{ localStorage.setItem("spellwalker_stats",JSON.stringify(stats)); }catch(e){} }
@@ -382,7 +471,7 @@ const CLASSES=[
   {key:"ice",name:"Ice Wizard",color:"#4fd1ff",unlockWorld:1,tier:"IX",desc:"Icy spells that slow every enemy they strike, plus Deep Freeze — lock nearby enemies solid for a few seconds.",
     apply:p=>{p.frost=true;p.hasFreezeBurst=true;}},
   {key:"fire",name:"Fire Wizard",color:"#ff6b4a",unlockWorld:1,tier:"VIII",desc:"Blazing spells that hit harder (+15% spell damage), plus Blazing Dash — scorch everything around you.",
-    apply:p=>{p.dmgMult=(p.dmgMult||1)+0.15;p.hasFireDash=true;}},
+    apply:p=>{p.dmgMult=(p.dmgMult||1)+0.15;p.hasFireDash=true;p.fireElement=true;}},
   {key:"tank",name:"Stone Tank",color:"#8a8f9e",unlockWorld:1,tier:"VII",desc:"Thick hide (+30 max HP, a touch slower on your feet), plus Shockwave Slam — smash and knock back everything nearby.",
     apply:p=>{p.maxHp+=30;p.hp=p.maxHp;p.speedMult=(p.speedMult||1)*0.92;p.hasShockwave=true;}},
   {key:"shadow",name:"Shadow Lord",color:"#a78bfa",unlockWorld:3,tier:"VI",desc:"Starts with a Dash to teleport-blink past danger, plus Shadow Step — turn your own shadow into a duplicate that fights beside you.",
@@ -424,16 +513,16 @@ const CLASSES=[
 ];
 
 const BIOMES=[
-  {name:"Emerald Forest",sky:["#173a2a","#0a1810"],ground:"#204a30",decor:"#2f7a4a",decorShape:"tree"},
-  {name:"Frozen Tundra",sky:["#1a2740","#0a1220"],ground:"#33455e",decor:"#bfe8ff",decorShape:"crystal"},
-  {name:"Volcanic Ridge",sky:["#3a1414","#140606"],ground:"#4a2418",decor:"#ff8a4a",decorShape:"rock"},
-  {name:"Coral Depths",sky:["#0d2b3a","#03121a"],ground:"#123a4a",decor:"#ff8fb0",decorShape:"coral"},
-  {name:"Candy Dunes",sky:["#3a1a3a","#180a1a"],ground:"#4a2a4a",decor:"#ffd1e8",decorShape:"swirl"},
-  {name:"Shadow Marsh",sky:["#12161a",  "#06080a"],ground:"#232b26",decor:"#7b5aa6",decorShape:"mushroom"},
-  {name:"Sky Isles",sky:["#1a2a4a","#08101c"],ground:"#2a3a5a",decor:"#eaf2ff",decorShape:"cloud"},
-  {name:"Crystal Caverns",sky:["#241a3a","#0d0818"],ground:"#34275a",decor:"#c9a8ff",decorShape:"crystal"},
-  {name:"Sunfire Desert",sky:["#3a2a14","#180f06"],ground:"#5a4222",decor:"#ffd24a",decorShape:"rock"},
-  {name:"Moonlit Ruins",sky:["#14162a","#060714"],ground:"#2a2c40",decor:"#9aa3c9",decorShape:"pillar"}
+  {name:"Emerald Forest",sky:["#173a2a","#0a1810"],ground:"#204a30",decor:"#2f7a4a",decorShape:"tree",enemyTypes:["slime","beast","skeleton","ghost"]},
+  {name:"Frozen Tundra",sky:["#1a2740","#0a1220"],ground:"#33455e",decor:"#bfe8ff",decorShape:"crystal",enemyTypes:["wisp","ghost","skeleton"]},
+  {name:"Volcanic Ridge",sky:["#3a1414","#140606"],ground:"#4a2418",decor:"#ff8a4a",decorShape:"rock",enemyTypes:["imp","beast","skeleton"]},
+  {name:"Coral Depths",sky:["#0d2b3a","#03121a"],ground:"#123a4a",decor:"#ff8fb0",decorShape:"coral",enemyTypes:["crab","slime","ghost"]},
+  {name:"Candy Dunes",sky:["#3a1a3a","#180a1a"],ground:"#4a2a4a",decor:"#ffd1e8",decorShape:"swirl",enemyTypes:["slime","beast","skeleton","ghost"]},
+  {name:"Shadow Marsh",sky:["#12161a",  "#06080a"],ground:"#232b26",decor:"#7b5aa6",decorShape:"mushroom",enemyTypes:["ghost","skeleton","crab"]},
+  {name:"Sky Isles",sky:["#1a2a4a","#08101c"],ground:"#2a3a5a",decor:"#eaf2ff",decorShape:"cloud",enemyTypes:["wisp","ghost","beast"]},
+  {name:"Crystal Caverns",sky:["#241a3a","#0d0818"],ground:"#34275a",decor:"#c9a8ff",decorShape:"crystal",enemyTypes:["wisp","skeleton","slime"]},
+  {name:"Sunfire Desert",sky:["#3a2a14","#180f06"],ground:"#5a4222",decor:"#ffd24a",decorShape:"rock",enemyTypes:["imp","beast","slime"]},
+  {name:"Moonlit Ruins",sky:["#14162a","#060714"],ground:"#2a2c40",decor:"#9aa3c9",decorShape:"pillar",enemyTypes:["skeleton","ghost","imp"]}
 ];
 
 const PERKS=[
@@ -464,6 +553,38 @@ const ITEMS=[
   {key:"pearl",name:"Pearl Charm",color:"#f5f3ff",desc:"+15 max HP and a small heal.",apply:p=>{p.maxHp+=15;p.hp=Math.min(p.maxHp,p.hp+15);}}
 ];
 
+// a small curated slice of PERKS offered as a guaranteed starting pick on the
+// start screen, so a run doesn't have to hope for a good perk at level 2
+const LOADOUT_OPTIONS=["blaze","frost","growth","swift","guardian"];
+
+// permanent, gold-bought upgrades that stack across every future run (up to
+// `max` levels each) — separate from anything earned inside a single run
+const SHOP_UPGRADES=[
+  {key:"hp",name:"Vitality Charm",desc:"+8 max HP per level, always.",max:5,cost:l=>30+l*20},
+  {key:"dmg",name:"Power Rune",desc:"+4% spell damage per level, always.",max:5,cost:l=>35+l*25},
+  {key:"speed",name:"Swift Sigil",desc:"+3% movement speed per level, always.",max:5,cost:l=>25+l*15},
+  {key:"xp",name:"Wisdom Sigil",desc:"+5% XP gained per level, always.",max:5,cost:l=>25+l*20},
+  {key:"itemSlot",name:"Charm Pouch",desc:"+1 item slot per level, always.",max:3,cost:l=>60+l*50}
+];
+// bakes every purchased shop upgrade into a player/baseline object — called
+// once at the start of every run, on top of whatever the class grants
+function applyMetaUpgrades(p){
+  const m=stats.metaUpgrades||{};
+  if(m.hp) { p.maxHp+=m.hp*8; p.hp=p.maxHp; }
+  if(m.dmg) p.dmgMult=(p.dmgMult||1)+m.dmg*0.04;
+  if(m.speed) p.speedMult=(p.speedMult||1)*(1+m.speed*0.03);
+  if(m.xp) p.xpMult=(p.xpMult||1)+m.xp*0.05;
+  if(m.itemSlot) p.itemSlots=(p.itemSlots||3)+m.itemSlot;
+}
+function shuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(rand(0,i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
 const ACHIEVEMENTS=[
   {key:"first_blood",icon:"🩸",name:"First Blood",desc:"Defeat your first monster.",check:s=>s.totalKills>=1},
   {key:"monster_hunter",icon:"🗡️",name:"Monster Hunter",desc:"Defeat 100 monsters.",check:s=>s.totalKills>=100},
@@ -476,7 +597,11 @@ const ACHIEVEMENTS=[
   {key:"archmage",icon:"✨",name:"Archmage",desc:"Reach World 100.",check:()=>maxWorldReached>=100},
   {key:"try_them_all",icon:"🎭",name:"Try Them All",desc:"Play a run with every wizard class.",check:s=>CLASSES.every(c=>s.classesPlayed.includes(c.key))},
   {key:"survivor",icon:"💀",name:"Survivor",desc:"Get knocked out once and come back for more.",check:s=>s.totalDeaths>=1},
-  {key:"boss_rush_champ",icon:"🥇",name:"Boss Rush Champion",desc:"Complete Boss Rush mode.",check:s=>!!s.bossRushBestTime}
+  {key:"boss_rush_champ",icon:"🥇",name:"Boss Rush Champion",desc:"Complete Boss Rush mode.",check:s=>!!(s.bossRushBestTimes&&Object.keys(s.bossRushBestTimes).length)},
+  {key:"endless_10",icon:"♾️",name:"Endless Contender",desc:"Clear 10 bosses in a single Endless Boss Rush.",check:s=>(s.bossRushEndlessBest||0)>=10},
+  {key:"rich",icon:"🪙",name:"Treasure Hoarder",desc:"Collect 500 total gold.",check:s=>(s.goldEarned||0)>=500},
+  {key:"shopper",icon:"🛒",name:"Well Equipped",desc:"Buy your first permanent shop upgrade.",check:s=>Object.values(s.metaUpgrades||{}).some(v=>v>0)},
+  {key:"new_game_plus",icon:"🔁",name:"Around Again",desc:"Reach New Game+ by clearing World 100.",check:()=>maxWorldReached>100}
 ];
 function checkAchievements(){
   const newly=[];
@@ -497,23 +622,29 @@ function checkAchievements(){
 
 const ENEMY_TYPES=["slime","beast","skeleton","ghost"];
 // roman-numeral power tiers for the basic monster roster, weakest (IV) to strongest (I)
-const ENEMY_TIERS={slime:"IV",beast:"III",skeleton:"II",ghost:"I"};
+// wisp/imp/crab are the biome-specific monsters (see BIOMES.enemyTypes) — tiered
+// alongside the original four so mixing them into a spawn pool stays balanced
+const ENEMY_TIERS={slime:"IV",beast:"III",skeleton:"II",ghost:"I",wisp:"III",imp:"II",crab:"IV"};
 // a different named boss for every world, cycling through this roster as the
 // levels climb — each one is also just plain stronger than the last (see makeEnemy).
 // tier is a fixed roman-numeral power ranking of the boss NAME itself (X weakest,
 // I strongest), and it actually multiplies the boss's stats on top of the ever-climbing
 // world-index scaling — with a huge jump from tier V upward, same as the wizard tiers.
+// weak: takes 1.5x from that element. resist: takes 0.5x. Only tracked for the
+// three "flagged" damage elements the game actually tags (frost/fire/poison) —
+// see applyElemental() — so this stays a real system without needing every
+// attack in the game to carry an element.
 const BOSS_TYPES=[
-  {name:"Slime King",color:"#4ade80",shape:"slime",tier:"X"},
-  {name:"Alpha Beast",color:"#c98a52",shape:"beast",tier:"IX"},
-  {name:"Wailing Specter",color:"#b6c3ff",shape:"ghost",tier:"VIII"},
-  {name:"Bone Tyrant",color:"#e8ecf5",shape:"skeleton",tier:"VII"},
-  {name:"Venom Hydra",color:"#84cc16",shape:"beast",tier:"VI"},
-  {name:"Frost Colossus",color:"#4fd1ff",shape:"beast",tier:"V"},
-  {name:"Crimson Warlord",color:"#ff5b7a",shape:"wizard",tier:"IV"},
-  {name:"Shadow Reaper",color:"#a78bfa",shape:"ghost",tier:"III"},
-  {name:"Storm Herald",color:"#22d3ee",shape:"wizard",tier:"II"},
-  {name:"Radiant Devourer",color:"#fde68a",shape:"slime",tier:"I"}
+  {name:"Slime King",color:"#4ade80",shape:"slime",tier:"X",weak:"fire",resist:"poison"},
+  {name:"Alpha Beast",color:"#c98a52",shape:"beast",tier:"IX",weak:"fire",resist:"frost"},
+  {name:"Wailing Specter",color:"#b6c3ff",shape:"ghost",tier:"VIII",weak:"fire",resist:"frost"},
+  {name:"Bone Tyrant",color:"#e8ecf5",shape:"skeleton",tier:"VII",weak:"frost",resist:"poison"},
+  {name:"Venom Hydra",color:"#84cc16",shape:"beast",tier:"VI",weak:"fire",resist:"poison"},
+  {name:"Frost Colossus",color:"#4fd1ff",shape:"beast",tier:"V",weak:"fire",resist:"frost"},
+  {name:"Crimson Warlord",color:"#ff5b7a",shape:"wizard",tier:"IV",weak:"frost",resist:"fire"},
+  {name:"Shadow Reaper",color:"#a78bfa",shape:"ghost",tier:"III",weak:"fire",resist:"frost"},
+  {name:"Storm Herald",color:"#22d3ee",shape:"wizard",tier:"II",weak:"fire",resist:"frost"},
+  {name:"Radiant Devourer",color:"#fde68a",shape:"slime",tier:"I",weak:"poison",resist:"fire"}
 ];
 // flipped on purpose: the low-numbered "top" tiers (I-V) stay close together,
 // while the "lower" tiers (VI-X) hit a huge power cliff and are the real threats
@@ -539,6 +670,41 @@ resize();
 
 const keys={};
 const joy={active:false,dx:0,dy:0,id:null};
+// Gamepad API support: left stick moves, A casts, B dashes, X uses the class's
+// special ability, Y possesses, Start pauses. Polled once per frame in loop().
+const gamepadState={dx:0,dy:0,active:false};
+const gpPrev={start:false};
+function tryClassAbility(){
+  if(player.hasShadowStep) tryShadowStep();
+  else if(player.hasZeusJudgement) tryZeusJudgement();
+  else if(player.hasRainbowNova) tryRainbowNova();
+  else if(player.hasNatureNova) tryNatureNova();
+  else if(player.hasFreezeBurst) tryFreezeBurst();
+  else if(player.hasFireDash) tryFireDash();
+  else if(player.hasShockwave) tryShockwave();
+}
+function pollGamepad(){
+  if(!navigator.getGamepads) return;
+  let gp=null;
+  try{ const pads=navigator.getGamepads(); for(const p of pads){ if(p){ gp=p; break; } } }catch(e){ return; }
+  if(!gp){ gamepadState.active=false; return; }
+  const dead=0.2;
+  let ax=gp.axes[0]||0, ay=gp.axes[1]||0;
+  if(Math.hypot(ax,ay)<dead){ ax=0; ay=0; }
+  gamepadState.dx=ax; gamepadState.dy=ay; gamepadState.active=(ax!==0||ay!==0);
+  if(mode==="playing"){
+    if(gp.buttons[0]&&gp.buttons[0].pressed) cast();
+    if(gp.buttons[1]&&gp.buttons[1].pressed) tryDash();
+    if(gp.buttons[2]&&gp.buttons[2].pressed) tryClassAbility();
+    if(gp.buttons[3]&&gp.buttons[3].pressed) tryPossess();
+  }
+  const startPressed=!!(gp.buttons[9]&&gp.buttons[9].pressed);
+  if(startPressed && !gpPrev.start){
+    if(mode==="playing") openPause();
+    else if(mode==="paused") closePause();
+  }
+  gpPrev.start=startPressed;
+}
 const mouse={x:0,y:0,down:false};
 let mode="start"; // start | playing | levelup | worldclear | gameover | paused
 let lastTime=performance.now();
@@ -679,14 +845,21 @@ const camera={x:0,y:0};
 function makeWorld(index){
   const biome=BIOMES[index%BIOMES.length];
   const count=clamp(Math.round((4+Math.floor(index/2))*3.33),5,20);
+  const pool=biome.enemyTypes||ENEMY_TYPES;
   const enemies=[];
   const spawn={x:WORLD_W/2,y:WORLD_H/2};
   for(let i=0;i<count;i++){
     let ex,ey;
     do{ ex=rand(80,WORLD_W-80); ey=rand(80,WORLD_H-80); }
     while(dist(ex,ey,spawn.x,spawn.y)<340);
-    const type=ENEMY_TYPES[Math.floor(rand(0,ENEMY_TYPES.length))];
+    const type=pool[Math.floor(rand(0,pool.length))];
     enemies.push(makeEnemy(type,ex,ey,index,false));
+  }
+  // from World 6 onward, one monster in the pack is a tougher "elite" — a
+  // mini-boss-style mid-world challenge, separate from the named boss at the end
+  if(index>=5 && enemies.length){
+    const en=enemies[Math.floor(rand(0,enemies.length))];
+    en.elite=true; en.hp*=3; en.maxHp=en.hp; en.damage*=1.8; en.r*=1.35;
   }
   const decor=[];
   for(let i=0;i<26;i++){
@@ -696,16 +869,25 @@ function makeWorld(index){
   return {index,biome,enemies,decor,bossSpawned:false,bossDefeated:false,boss:null,stone:null,spawn};
 }
 
-function makeEnemy(type,x,y,index,isBoss){
+function makeEnemy(type,x,y,index,isBoss,opts){
+  opts=opts||{};
   // every level is noticeably tougher than the one before it
-  const colors={slime:"#4ade80",beast:"#c98a52",skeleton:"#dfe3ee",ghost:"#b6c3ff"};
-  const bossType=isBoss?BOSS_TYPES[index%BOSS_TYPES.length]:null;
+  const colors={slime:"#4ade80",beast:"#c98a52",skeleton:"#dfe3ee",ghost:"#b6c3ff",
+    wisp:"#a5e8ff",imp:"#ff8a4a",crab:"#ff8fb0"};
+  // forcedBossIdx lets Boss Rush pick a specific named boss regardless of `index`
+  // (needed for its randomized-order option); `index` still drives raw stat scaling,
+  // which is what lets Endless Boss Rush escalate difficulty lap after lap
+  const bossIdx=isBoss?((opts.forcedBossIdx!=null)?opts.forcedBossIdx:index%BOSS_TYPES.length):0;
+  const bossType=isBoss?BOSS_TYPES[bossIdx]:null;
   const tierMult=isBoss?(BOSS_TIER_MULT[bossType.tier]||1):1;
   const dm=DIFFICULTY_MULT[difficulty]||DIFFICULTY_MULT.normal;
-  const baseHp=(isBoss?(150+index*26)*tierMult:16+index*3.2)*dm.hp;
+  // New Game+: every full lap past World 100 adds another +50% to hp/damage
+  const ngCycle=Math.floor(index/100);
+  const ngMult=1+ngCycle*0.5;
+  const baseHp=(isBoss?(150+index*26)*tierMult:16+index*3.2)*dm.hp*ngMult;
   // bosses always deal a flat 15 contact/attack damage, regardless of tier or world —
-  // only the difficulty setting scales it up or down from there
-  const baseDmg=(isBoss?15:4+index*0.55)*dm.dmg;
+  // only the difficulty setting and New Game+ scale it up or down from there
+  const baseDmg=(isBoss?15:4+index*0.55)*dm.dmg*ngMult;
   // speed scales much more gently than hp/damage so a top-tier boss is a real
   // bullet-sponge threat rather than literally unhittable
   const baseSpeed=isBoss?(128+index*0.6)*(1+(tierMult-1)*0.12):rand(58,86)+index*0.5;
@@ -715,10 +897,12 @@ function makeEnemy(type,x,y,index,isBoss){
     name:isBoss?bossType.name:type,
     shape:isBoss?bossType.shape:type,
     tier:isBoss?bossType.tier:(ENEMY_TIERS[type]||"?"),
+    weak:isBoss?bossType.weak:null, resist:isBoss?bossType.resist:null,
     vx:0,vy:0,hitCd:0,wanderT:rand(0,3),wanderDir:rand(0,Math.PI*2),
     spawnX:x,spawnY:y,slowT:0,poisonT:0,poisonTick:0,frozenT:0,
     bossState:"idle",bossTimer:rand(0.8,1.4),dashChargeX:x,dashChargeY:y,
-    specialCd:isBoss?rand(4,6):0,enraged:false,
+    specialCd:isBoss?rand(4,6):0,enraged:false,elite:false,
+    calledWeak:false,calledResist:false,
     facing:0,bobT:rand(0,10),invFlash:0};
 }
 
@@ -727,7 +911,8 @@ function loadWorld(w){
   player.x=w.spawn.x; player.y=w.spawn.y-40;
   camera.x=player.x-viewW/2;
   camera.y=player.y-viewH/2;
-  document.getElementById("worldTag").textContent="WORLD "+(w.index+1);
+  const ngCycle=Math.floor(w.index/100);
+  document.getElementById("worldTag").textContent=(ngCycle>0?"NG+"+ngCycle+" · ":"")+"WORLD "+(w.index+1);
   document.getElementById("worldName").textContent=w.biome.name;
   markWorldReached(w.index+1);
 }
@@ -763,6 +948,44 @@ function buildClassGrid(){
 }
 buildClassGrid();
 
+// optional guaranteed starting perk, picked on the start screen (see LOADOUT_OPTIONS)
+let selectedLoadout=null;
+const loadoutRow=document.getElementById("loadoutRow");
+function buildLoadoutRow(){
+  if(!loadoutRow) return;
+  loadoutRow.innerHTML="";
+  const noneChip=document.createElement("div");
+  noneChip.className="loadoutChip sel";
+  noneChip.innerHTML="<b>None</b><br><small>Surprise me</small>";
+  noneChip.addEventListener("click",()=>{
+    document.querySelectorAll(".loadoutChip").forEach(e=>e.classList.remove("sel"));
+    noneChip.classList.add("sel"); selectedLoadout=null;
+  });
+  loadoutRow.appendChild(noneChip);
+  LOADOUT_OPTIONS.forEach(key=>{
+    const pk=PERKS.find(p=>p.key===key);
+    if(!pk) return;
+    const div=document.createElement("div");
+    div.className="loadoutChip";
+    div.innerHTML='<b style="color:'+pk.color+'">'+pk.name+'</b><br><small>'+pk.desc+'</small>';
+    div.addEventListener("click",()=>{
+      document.querySelectorAll(".loadoutChip").forEach(e=>e.classList.remove("sel"));
+      div.classList.add("sel"); selectedLoadout=key;
+    });
+    loadoutRow.appendChild(div);
+  });
+}
+buildLoadoutRow();
+// applies the chosen starting perk (if any) and every purchased shop upgrade —
+// called once per run, right after the class's own apply(player)
+function applyRunStartBonuses(){
+  applyMetaUpgrades(player);
+  if(selectedLoadout){
+    const pk=PERKS.find(p=>p.key===selectedLoadout);
+    if(pk){ pk.apply(player); player.perksTaken.push(selectedLoadout); }
+  }
+}
+
 function buildDiffRow(){
   document.querySelectorAll("#diffRow .diffBtn").forEach(btn=>{
     btn.classList.toggle("sel",btn.dataset.d===difficulty);
@@ -772,9 +995,24 @@ function buildDiffRow(){
 buildDiffRow();
 
 function refreshBossRushButton(){
-  document.getElementById("bossRushBtn").hidden=stats.bossesDefeated.length<BOSS_TYPES.length;
+  const unlocked=stats.bossesDefeated.length>=BOSS_TYPES.length;
+  document.getElementById("bossRushBtn").hidden=!unlocked;
+  document.getElementById("bossRushToggles").hidden=!unlocked;
 }
 refreshBossRushButton();
+
+// Boss Rush variant toggles: Random Order shuffles the boss sequence each run,
+// Endless loops back to boss 1 (scaled up) instead of ending after all 10
+let bossRushRandom=false, bossRushEndless=false, bossRushOrder=[];
+function setToggleBtn(id,on){
+  document.getElementById(id).classList.toggle("sel",on);
+}
+document.getElementById("brRandomToggle").addEventListener("click",()=>{
+  bossRushRandom=!bossRushRandom; setToggleBtn("brRandomToggle",bossRushRandom);
+});
+document.getElementById("brEndlessToggle").addEventListener("click",()=>{
+  bossRushEndless=!bossRushEndless; setToggleBtn("brEndlessToggle",bossRushEndless);
+});
 
 /* newly reaching a milestone world unlocks a wizard permanently (saved separately
    from the run itself, so restarting or dying never takes it away) */
@@ -874,6 +1112,7 @@ document.getElementById("beginBtn").addEventListener("click",()=>{
   const c=chosenClass||CLASSES[0];
   player.cls=c.key; player.color=c.color;
   c.apply(player);
+  applyRunStartBonuses();
   if(!stats.classesPlayed.includes(c.key)){ stats.classesPlayed.push(c.key); saveStats(); }
   startGame(0,false);
 });
@@ -885,13 +1124,16 @@ document.getElementById("bossRushBtn").addEventListener("click",()=>{
   const c=chosenClass||CLASSES[0];
   player.cls=c.key; player.color=c.color;
   c.apply(player);
+  applyRunStartBonuses();
   if(!stats.classesPlayed.includes(c.key)){ stats.classesPlayed.push(c.key); saveStats(); }
+  bossRushOrder=bossRushRandom?shuffle(BOSS_TYPES.map((b,i)=>i)):BOSS_TYPES.map((b,i)=>i);
   startGame(0,true);
 });
 
 function startGame(worldIndex,bossRush){
   document.getElementById("startScreen").hidden=true;
   document.getElementById("hud").hidden=false;
+  document.getElementById("minimap").hidden=false;
   document.getElementById("joyBase").hidden=false;
   document.getElementById("rightControls").hidden=false;
   document.getElementById("pauseBtn").hidden=false;
@@ -949,6 +1191,8 @@ function updateHUD(){
   document.getElementById("xpLabel").textContent="XP "+player.xp+"/"+player.xpNext;
   document.getElementById("itemsCard").hidden=false;
   document.getElementById("itemsLabel").textContent=player.items.length+"/"+player.itemSlots;
+  const goldLbl=document.getElementById("goldLabel");
+  if(goldLbl) goldLbl.textContent=stats.gold||0;
 }
 let toastTimer=null;
 function showToast(msg,ms){
@@ -987,10 +1231,115 @@ function buildStatsBlock(){
     '<div class="hud-card">Monsters defeated<br><b>'+stats.totalKills+'</b></div>'+
     '<div class="hud-card">Bosses defeated<br><b>'+stats.bossesDefeated.length+'/'+BOSS_TYPES.length+'</b></div>'+
     '<div class="hud-card">Furthest world<br><b>'+maxWorldReached+'</b></div>'+
-    '<div class="hud-card">Boss Rush best<br><b>'+(stats.bossRushBestTime?stats.bossRushBestTime.toFixed(1)+'s':'—')+'</b></div>';
+    '<div class="hud-card">Boss Rush best<br><b>'+(stats.bossRushBestTime?stats.bossRushBestTime.toFixed(1)+'s':'—')+'</b></div>'+
+    '<div class="hud-card">Endless best<br><b>'+(stats.bossRushEndlessBest||0)+' bosses</b></div>'+
+    '<div class="hud-card">🪙 Gold<br><b>'+(stats.gold||0)+'</b></div>';
 }
+function buildLeaderboard(){
+  const wrap=document.getElementById("lbList");
+  if(!wrap) return;
+  const times=stats.bossRushBestTimes||{};
+  const entries=Object.keys(times).map(key=>({key,t:times[key]})).sort((a,b)=>a.t-b.t);
+  if(!entries.length){
+    wrap.innerHTML='<p class="subtitle" style="margin:0;">Clear a Boss Rush with any wizard to set a time!</p>';
+    return;
+  }
+  wrap.innerHTML=entries.map(e=>{
+    const c=CLASSES.find(c=>c.key===e.key);
+    const name=c?c.name:e.key;
+    const mins=Math.floor(e.t/60),secs=(e.t%60).toFixed(1);
+    return '<div class="lbRow"><span>'+name+'</span><span>'+mins+'m '+secs+'s</span></div>';
+  }).join("");
+}
+function buildShop(){
+  document.getElementById("goldRow").textContent="Gold: "+(stats.gold||0);
+  const grid=document.getElementById("shopGrid");
+  grid.innerHTML="";
+  if(!stats.metaUpgrades) stats.metaUpgrades={hp:0,dmg:0,speed:0,xp:0,itemSlot:0};
+  SHOP_UPGRADES.forEach(u=>{
+    const lvl=stats.metaUpgrades[u.key]||0;
+    const maxed=lvl>=u.max;
+    const cost=maxed?0:u.cost(lvl);
+    const row=document.createElement("div");
+    row.className="shopRow";
+    row.innerHTML='<div class="shopInfo"><h4>'+u.name+' (Lv '+lvl+'/'+u.max+')</h4><p>'+u.desc+'</p></div>'+
+      '<button class="shopBuyBtn" '+(maxed?"disabled":"")+'>'+(maxed?"MAX":("🪙 "+cost))+'</button>';
+    const btn=row.querySelector(".shopBuyBtn");
+    if(!maxed){
+      btn.disabled=(stats.gold||0)<cost;
+      btn.addEventListener("click",()=>{
+        if((stats.gold||0)<cost) return;
+        stats.gold-=cost;
+        stats.metaUpgrades[u.key]=lvl+1;
+        saveStats();
+        playSfx("levelup");
+        buildShop();
+        updateHUD();
+      });
+    }
+    grid.appendChild(row);
+  });
+}
+document.getElementById("shopBtn").addEventListener("click",()=>{
+  buildShop();
+  document.getElementById("shopScreen").hidden=false;
+});
+document.getElementById("shopCloseBtn").addEventListener("click",()=>{
+  document.getElementById("shopScreen").hidden=true;
+});
+document.getElementById("storyBtn").addEventListener("click",()=>{
+  document.getElementById("storyScreen").hidden=false;
+});
+document.getElementById("storyCloseBtn").addEventListener("click",()=>{
+  document.getElementById("storyScreen").hidden=true;
+});
+// bundles every localStorage key this game uses into one shareable text code,
+// so a save can be backed up or moved to another device by copy/paste
+const SAVE_CODE_KEYS=["spellwalker_save","spellwalker_progress","spellwalker_difficulty","spellwalker_stats","spellwalker_muted"];
+function exportSaveCode(){
+  const bundle={};
+  SAVE_CODE_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) bundle[k]=v; });
+  try{
+    return "SWSAVE1:"+btoa(encodeURIComponent(JSON.stringify(bundle)));
+  }catch(e){ return ""; }
+}
+function importSaveCode(code){
+  code=(code||"").trim();
+  if(!code.startsWith("SWSAVE1:")) return false;
+  try{
+    const bundle=JSON.parse(decodeURIComponent(atob(code.slice(8))));
+    Object.keys(bundle).forEach(k=>{ if(SAVE_CODE_KEYS.includes(k)) localStorage.setItem(k,bundle[k]); });
+    return true;
+  }catch(e){ return false; }
+}
+document.getElementById("saveCodeBtn").addEventListener("click",()=>{
+  document.getElementById("saveCodeBox").value=exportSaveCode();
+  document.getElementById("saveCodeScreen").hidden=false;
+});
+document.getElementById("saveCodeCloseBtn").addEventListener("click",()=>{
+  document.getElementById("saveCodeScreen").hidden=true;
+});
+document.getElementById("saveCodeCopyBtn").addEventListener("click",()=>{
+  const box=document.getElementById("saveCodeBox");
+  box.select();
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(box.value);
+    else document.execCommand("copy");
+    showToast("Save code copied!",1800);
+  }catch(e){ showToast("Couldn't copy automatically — select and copy manually.",2600); }
+});
+document.getElementById("saveCodeImportBtn").addEventListener("click",()=>{
+  const box=document.getElementById("saveCodeBox");
+  if(importSaveCode(box.value)){
+    showToast("Save imported! Restarting...",2200);
+    setTimeout(()=>location.reload(),1200);
+  } else {
+    showToast("That doesn't look like a valid save code.",2600);
+  }
+});
 function openAchievements(){
   buildStatsBlock();
+  buildLeaderboard();
   const list=document.getElementById("achList");
   list.innerHTML="";
   const unlockedCount=ACHIEVEMENTS.filter(a=>stats.achievementsUnlocked.includes(a.key)).length;
@@ -1113,18 +1462,43 @@ function spawnProjectile(angle,friendly){
   const p={x:player.x+Math.cos(angle)*player.r,y:player.y+Math.sin(angle)*player.r,
     vx:Math.cos(angle)*player.projSpeed,vy:Math.sin(angle)*player.projSpeed,
     r:player.projRadius,dmg:player.baseDamage*player.dmgMult,color:player.color,
-    life:1.1,friendly:true,frost:player.frost,poison:player.poison,pierce:!!player.pierce};
+    life:1.1,friendly:true,frost:player.frost,poison:player.poison,fire:!!player.fireElement,
+    pierce:!!player.pierce,trail:[]};
   projectiles.push(p);
+}
+// returns dmg adjusted for a boss's elemental weakness/resistance (frost/fire/poison
+// only — see BOSS_TYPES), with a one-time-per-encounter callout the first time it shows
+function applyElemental(en,elem,dmg){
+  if(!en||!elem||!en.isBoss) return dmg;
+  if(en.weak===elem){
+    if(!en.calledWeak){ en.calledWeak=true; showToast("💥 "+en.name+" is weak to "+elem+"!",2200); }
+    return dmg*1.5;
+  }
+  if(en.resist===elem){
+    if(!en.calledResist){ en.calledResist=true; showToast("🛡️ "+en.name+" resists "+elem+"!",2200); }
+    return dmg*0.5;
+  }
+  return dmg;
+}
+function grantGold(n){
+  if(!n) return;
+  stats.gold=(stats.gold||0)+n;
+  stats.goldEarned=(stats.goldEarned||0)+n;
+  saveStats();
+  updateHUD();
+  checkAchievements();
 }
 // shared cleanup for any regular (non-boss) enemy kill: XP, loot roll, stats, achievements
 function killEnemy(en){
   if(en.dead) return;
   en.dead=true;
   stats.totalKills++;
-  grantXP(2);
-  tryGrantItem(false);
-  spawnBurst(en.x,en.y,en.color,14);
+  grantXP(en.elite?6:2);
+  grantGold(en.elite?(8+Math.floor(rand(0,6))):(1+Math.floor(rand(0,2))));
+  tryGrantItem(en.elite?true:false);
+  spawnBurst(en.x,en.y,en.color,en.elite?24:14);
   playSfx("death");
+  if(en.elite) showToast("Elite "+en.type+" defeated!",2200);
   checkAchievements();
 }
 function cast(){
@@ -1277,7 +1651,7 @@ function tryFireDash(){
   world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
   world.enemies=world.enemies.filter(en=>!en.dead);
   if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<reach+world.boss.r){
-    world.boss.hp-=dmg; world.boss.poisonT=Math.max(world.boss.poisonT,2.4); world.boss.poisonTick=Math.min(world.boss.poisonTick||0.5,0.5);
+    world.boss.hp-=applyElemental(world.boss,"fire",dmg); world.boss.poisonT=Math.max(world.boss.poisonT,2.4); world.boss.poisonTick=Math.min(world.boss.poisonTick||0.5,0.5);
     spawnBurst(world.boss.x,world.boss.y,"#ff6b4a",14);
     if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
   }
@@ -1510,9 +1884,15 @@ function onBossDefeated(){
   checkAchievements();
   refreshBossRushButton();
   grantXP(12);
+  grantGold(25+(BOSS_TIER_MULT[world.boss.tier]||1)*8|0);
   if(bossRushActive){
     bossRushIndex++;
-    if(bossRushIndex>=BOSS_TYPES.length){
+    if(bossRushEndless){
+      stats.bossRushEndlessBest=Math.max(stats.bossRushEndlessBest||0,bossRushIndex);
+      saveStats(); checkAchievements();
+      showToast(world.boss.name+" defeated! ("+bossRushIndex+" down, Endless continues...)",2200);
+      setTimeout(()=>{ if(bossRushActive) startBossRushWorld(); },1800);
+    } else if(bossRushIndex>=BOSS_TYPES.length){
       finishBossRush();
     } else {
       showToast(world.boss.name+" defeated! Next boss incoming...",2200);
@@ -1537,18 +1917,20 @@ function startBossRushWorld(){
   loadWorld(w);
   // loadWorld labels the HUD as if this were normal world progress — overwrite
   // it so Boss Rush doesn't look like it reset your world count
-  document.getElementById("worldTag").textContent="BOSS RUSH "+(idx+1)+"/"+BOSS_TYPES.length;
+  const stageLbl=bossRushEndless?("BOSS RUSH "+(idx+1)):("BOSS RUSH "+(idx+1)+"/"+BOSS_TYPES.length);
+  document.getElementById("worldTag").textContent=stageLbl;
   document.getElementById("worldName").textContent=biome.name;
   let bx,by;
   do{ bx=rand(120,WORLD_W-120); by=rand(120,WORLD_H-120); }
   while(dist(bx,by,world.spawn.x,world.spawn.y)<500);
-  // idx is already 0..BOSS_TYPES.length-1, so makeEnemy's index%BOSS_TYPES.length
-  // picks the exact boss for this stage of the run, in named order
-  world.boss=makeEnemy("boss",bx,by,idx,true);
+  // Random Order picks from the shuffled bossRushOrder sequence (looping it for
+  // Endless); otherwise makeEnemy's own index%BOSS_TYPES.length keeps named order
+  const opts=(bossRushOrder&&bossRushOrder.length)?{forcedBossIdx:bossRushOrder[idx%bossRushOrder.length]}:{};
+  world.boss=makeEnemy("boss",bx,by,idx,true,opts);
   document.getElementById("compassWrap").hidden=false;
-  document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier+" · "+(idx+1)+"/"+BOSS_TYPES.length;
+  document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier+" · "+stageLbl;
   playSfx("boss");
-  showToast("Boss Rush "+(idx+1)+"/"+BOSS_TYPES.length+": "+world.boss.name+" (Tier "+world.boss.tier+") awaits!",3600);
+  showToast(stageLbl+": "+world.boss.name+" (Tier "+world.boss.tier+") awaits!",3600);
 }
 function finishBossRush(){
   bossRushActive=false;
@@ -1556,6 +1938,12 @@ function finishBossRush(){
   if(stats.bossRushBestTime===null || elapsed<stats.bossRushBestTime){
     stats.bossRushBestTime=elapsed;
   }
+  if(!stats.bossRushBestTimes) stats.bossRushBestTimes={};
+  const prevBest=stats.bossRushBestTimes[player.cls];
+  if(prevBest==null || elapsed<prevBest){
+    stats.bossRushBestTimes[player.cls]=elapsed;
+  }
+  grantGold(80);
   saveStats();
   checkAchievements();
   bossRushJustFinished=true;
@@ -1600,6 +1988,7 @@ document.getElementById("backToMenuBtn").addEventListener("click",()=>{
 });
 function returnToStartMenu(){
   document.getElementById("hud").hidden=true;
+  document.getElementById("minimap").hidden=true;
   document.getElementById("joyBase").hidden=true;
   document.getElementById("rightControls").hidden=true;
   document.getElementById("pauseBtn").hidden=true;
@@ -1624,6 +2013,7 @@ function updatePlayer(dt){
   if(keys["s"]||keys["arrowdown"]) dy+=1;
   if(keys["a"]||keys["arrowleft"]) dx-=1;
   if(keys["d"]||keys["arrowright"]) dx+=1;
+  if(dx===0 && dy===0 && gamepadState.active){ dx=gamepadState.dx; dy=gamepadState.dy; }
   const mag=Math.hypot(dx,dy);
   if(mag>0.05){
     dx/=Math.max(mag,1); dy/=Math.max(mag,1);
@@ -1937,6 +2327,11 @@ function triggerGameOver(){
 function updateProjectiles(dt){
   for(let i=projectiles.length-1;i>=0;i--){
     const p=projectiles[i];
+    if(p.friendly){
+      if(!p.trail) p.trail=[];
+      p.trail.push({x:p.x,y:p.y});
+      if(p.trail.length>6) p.trail.shift();
+    }
     p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
     let remove=p.life<=0;
     if(p.friendly){
@@ -1956,7 +2351,8 @@ function updateProjectiles(dt){
         }
       }
       if(world.boss && !world.boss.dead && !p.hitEns.includes(world.boss) && dist(p.x,p.y,world.boss.x,world.boss.y)<world.boss.r+p.r){
-        world.boss.hp-=p.dmg;
+        const elem=p.frost?"frost":(p.poison?"poison":(p.fire?"fire":null));
+        world.boss.hp-=applyElemental(world.boss,elem,p.dmg);
         if(p.frost) world.boss.slowT=1.0;
         if(p.poison){ world.boss.poisonT=3; world.boss.poisonTick=0.01; }
         if(player.lifesteal>0){ player.hp=Math.min(player.maxHp,player.hp+p.dmg*player.lifesteal); updateHUD(); }
@@ -2004,11 +2400,33 @@ function updateStone(dt){
 }
 
 /* ================= render ================= */
+// a slow-scrolling layer of soft blobs behind the ground, drawn directly in
+// screen space (not world space) so it tiles infinitely wherever the player roams
+function drawParallax(){
+  const b=world.biome;
+  const factor=0.4, cellSize=420;
+  const px=camera.x*factor, py=camera.y*factor;
+  const startX=Math.floor((px-cellSize)/cellSize)*cellSize;
+  const startY=Math.floor((py-cellSize)/cellSize)*cellSize;
+  ctx.save(); ctx.fillStyle=b.decor; ctx.globalAlpha=0.10;
+  for(let gx=startX; gx<px+viewW+cellSize; gx+=cellSize){
+    for(let gy=startY; gy<py+viewH+cellSize; gy+=cellSize){
+      const h=Math.abs(Math.sin(gx*12.9898+gy*78.233)*43758.5453)%1;
+      const cx=gx+cellSize*0.5+(h-0.5)*cellSize*0.5;
+      const cy=gy+cellSize*0.5+(((h*7)%1)-0.5)*cellSize*0.5;
+      const r=55+h*55;
+      ctx.beginPath(); ctx.arc(cx-px,cy-py,r,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function drawBackground(){
   const b=world.biome;
   const grad=ctx.createLinearGradient(0,0,0,viewH);
   grad.addColorStop(0,b.sky[0]); grad.addColorStop(1,b.sky[1]);
   ctx.fillStyle=grad; ctx.fillRect(0,0,viewW,viewH);
+  drawParallax();
 
   ctx.save();
   ctx.translate(-camera.x,-camera.y);
@@ -2164,18 +2582,71 @@ function drawGhost(en){
   ctx.restore(); ctx.globalAlpha=1;
 }
 
+function drawWisp(en){
+  const bob=Math.sin(en.bobT*5)*5;
+  ctx.save(); ctx.translate(en.x,en.y+bob);
+  ctx.globalAlpha=0.35;
+  ctx.fillStyle=en.slowT>0?"#8fd3ff":en.color;
+  ctx.beginPath(); ctx.arc(0,0,en.r*1.4,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.beginPath(); ctx.arc(0,0,en.r*0.7,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#ffffff";
+  ctx.beginPath(); ctx.arc(-en.r*0.15,-en.r*0.15,en.r*0.22,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawImp(en){
+  ctx.save(); ctx.translate(en.x,en.y);
+  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0,en.r*0.8,en.r*0.8,en.r*0.3,0,0,Math.PI*2); ctx.fill();
+  const col=en.slowT>0?"#8fd3ff":en.color;
+  ctx.fillStyle=col;
+  ctx.beginPath(); ctx.arc(0,0,en.r*0.75,0,Math.PI*2); ctx.fill();
+  // horns
+  ctx.beginPath(); ctx.moveTo(-en.r*0.5,-en.r*0.6); ctx.lineTo(-en.r*0.7,-en.r*1.15); ctx.lineTo(-en.r*0.2,-en.r*0.65); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(en.r*0.5,-en.r*0.6); ctx.lineTo(en.r*0.7,-en.r*1.15); ctx.lineTo(en.r*0.2,-en.r*0.65); ctx.closePath(); ctx.fill();
+  // tail
+  ctx.strokeStyle=col; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(0,en.r*0.6); ctx.quadraticCurveTo(en.r*0.9,en.r*0.9,en.r*0.7,en.r*1.3); ctx.stroke();
+  ctx.fillStyle="#1a1210";
+  ctx.fillRect(-en.r*0.32,-en.r*0.1,en.r*0.14,en.r*0.14);
+  ctx.fillRect(en.r*0.18,-en.r*0.1,en.r*0.14,en.r*0.14);
+  ctx.restore();
+}
+function drawCrab(en){
+  ctx.save(); ctx.translate(en.x,en.y);
+  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0,en.r*0.9,en.r*1.1,en.r*0.35,0,0,Math.PI*2); ctx.fill();
+  const col=en.slowT>0?"#8fd3ff":en.color;
+  ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(0,0,en.r*1.05,en.r*0.7,0,0,Math.PI*2); ctx.fill();
+  // pincers
+  ctx.beginPath(); ctx.ellipse(-en.r*1.1,-en.r*0.1,en.r*0.32,en.r*0.22,0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(en.r*1.1,-en.r*0.1,en.r*0.32,en.r*0.22,-0.4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#1a0f14";
+  ctx.fillRect(-en.r*0.3,-en.r*0.35,en.r*0.14,en.r*0.14);
+  ctx.fillRect(en.r*0.16,-en.r*0.35,en.r*0.14,en.r*0.14);
+  ctx.restore();
+}
+
 function drawEnemy(en){
+  if(en.elite){
+    ctx.save(); ctx.translate(en.x,en.y);
+    ctx.strokeStyle="#ffd54a"; ctx.lineWidth=3; ctx.globalAlpha=0.75+Math.sin(en.bobT*4)*0.2;
+    ctx.beginPath(); ctx.arc(0,0,en.r*1.35,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
   if(en.type==="slime") drawSlime(en);
   else if(en.type==="beast") drawBeast(en);
   else if(en.type==="skeleton") drawSkeleton(en);
   else if(en.type==="ghost") drawGhost(en);
+  else if(en.type==="wisp") drawWisp(en);
+  else if(en.type==="imp") drawImp(en);
+  else if(en.type==="crab") drawCrab(en);
 
   ctx.save(); ctx.translate(en.x,en.y-en.r-14);
   ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(-18,0,36,5);
   ctx.fillStyle="#ff4d6d"; ctx.fillRect(-18,0,36*clamp(en.hp/en.maxHp,0,1),5);
   ctx.font="8px monospace"; ctx.textAlign="center";
-  ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillText(en.tier,1,-2);
-  ctx.fillStyle="#e8ecf5"; ctx.fillText(en.tier,0,-3);
+  ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillText(en.elite?"★"+en.tier:en.tier,1,-2);
+  ctx.fillStyle=en.elite?"#ffd54a":"#e8ecf5"; ctx.fillText(en.elite?"★"+en.tier:en.tier,0,-3);
   ctx.restore();
 }
 
@@ -2207,6 +2678,16 @@ function drawStone(st){
 }
 
 function drawProjectile(p){
+  if(p.trail && p.trail.length>1){
+    ctx.save();
+    for(let i=0;i<p.trail.length;i++){
+      const pt=p.trail[i];
+      ctx.globalAlpha=(i/p.trail.length)*0.35;
+      ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,p.r*(0.3+0.5*i/p.trail.length),0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
   ctx.save(); ctx.translate(p.x,p.y);
   ctx.fillStyle=p.color;
   ctx.shadowColor=p.color; ctx.shadowBlur=8;
@@ -2269,12 +2750,43 @@ function render(){
 
   ctx.restore();
   camera.x=realCamX; camera.y=realCamY;
+  if(mode==="playing") drawMinimap();
+}
+
+const minimapCanvas=document.getElementById("minimap");
+const minimapCtx=minimapCanvas?minimapCanvas.getContext("2d"):null;
+if(minimapCanvas){ minimapCanvas.width=110; minimapCanvas.height=80; }
+function drawMinimap(){
+  if(!minimapCtx) return;
+  const w=minimapCanvas.width, h=minimapCanvas.height;
+  const mctx=minimapCtx;
+  mctx.clearRect(0,0,w,h);
+  mctx.fillStyle="rgba(255,255,255,0.06)";
+  mctx.fillRect(0,0,w,h);
+  const sx=w/WORLD_W, sy=h/WORLD_H;
+  world.enemies.forEach(en=>{
+    mctx.fillStyle=en.elite?"#ffd54a":"rgba(220,80,90,0.85)";
+    mctx.beginPath(); mctx.arc(en.x*sx,en.y*sy,en.elite?2.4:1.6,0,Math.PI*2); mctx.fill();
+  });
+  if(world.boss && !world.boss.dead){
+    mctx.fillStyle="#ff4d6d";
+    mctx.beginPath(); mctx.arc(world.boss.x*sx,world.boss.y*sy,3.5,0,Math.PI*2); mctx.fill();
+  }
+  if(world.stone){
+    mctx.fillStyle="#ffd54a";
+    mctx.beginPath(); mctx.arc(world.stone.x*sx,world.stone.y*sy,3,0,Math.PI*2); mctx.fill();
+  }
+  mctx.fillStyle="#4fd1ff";
+  mctx.beginPath(); mctx.arc(player.x*sx,player.y*sy,2.6,0,Math.PI*2); mctx.fill();
+  mctx.strokeStyle="rgba(255,255,255,0.25)"; mctx.lineWidth=1;
+  mctx.strokeRect(0.5,0.5,w-1,h-1);
 }
 
 /* ================= main loop ================= */
 function loop(now){
   const dt=Math.min(0.033,(now-lastTime)/1000);
   lastTime=now;
+  pollGamepad();
   if(hitPauseT>0){
     hitPauseT=Math.max(0,hitPauseT-dt);
     render();
