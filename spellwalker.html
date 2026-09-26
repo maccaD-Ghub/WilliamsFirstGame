@@ -1003,10 +1003,12 @@ function openAchievements(){
       '<div><h4>'+a.name+'</h4><p>'+a.desc+'</p></div>';
     list.appendChild(row);
   });
+  document.getElementById("pauseScreen").hidden=true;
   document.getElementById("achievementsScreen").hidden=false;
 }
 function closeAchievements(){
   document.getElementById("achievementsScreen").hidden=true;
+  if(mode==="paused") document.getElementById("pauseScreen").hidden=false;
 }
 document.getElementById("achievementsBtn").addEventListener("click",openAchievements);
 document.getElementById("pauseAchBtn").addEventListener("click",openAchievements);
@@ -1533,6 +1535,10 @@ function startBossRushWorld(){
   }
   const w={index:idx,biome,enemies:[],decor,bossSpawned:true,bossDefeated:false,boss:null,stone:null,spawn};
   loadWorld(w);
+  // loadWorld labels the HUD as if this were normal world progress — overwrite
+  // it so Boss Rush doesn't look like it reset your world count
+  document.getElementById("worldTag").textContent="BOSS RUSH "+(idx+1)+"/"+BOSS_TYPES.length;
+  document.getElementById("worldName").textContent=biome.name;
   let bx,by;
   do{ bx=rand(120,WORLD_W-120); by=rand(120,WORLD_H-120); }
   while(dist(bx,by,world.spawn.x,world.spawn.y)<500);
@@ -1757,7 +1763,17 @@ function updateEnemy(en,dt){
   en.frozenT=Math.max(0,(en.frozenT||0)-dt);
   if(en.poisonT>0){
     en.poisonT-=dt; en.poisonTick-=dt;
-    if(en.poisonTick<=0){ en.hp-=4; en.poisonTick=0.5; spawnBurst(en.x,en.y,"#84cc16",3); }
+    if(en.poisonTick<=0){
+      en.hp-=4; en.poisonTick=0.5; spawnBurst(en.x,en.y,"#84cc16",3);
+      // a monster whose HP is ticked to 0 by poison alone (no final weapon hit)
+      // must still be marked dead here, or it lingers forever and can block a
+      // world's boss from ever spawning (which waits for enemies.length===0)
+      if(en.hp<=0 && !en.dead){
+        if(en.isBoss){ en.dead=true; onBossDefeated(); }
+        else killEnemy(en);
+        return;
+      }
+    }
   }
   const dToPlayer=dist(en.x,en.y,player.x,player.y);
 
