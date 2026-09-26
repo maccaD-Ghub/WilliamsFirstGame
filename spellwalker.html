@@ -674,6 +674,16 @@ const BOSS_TIER_MULT={X:4.2,IX:3.6,VIII:3.2,VII:2.8,VI:2.5,V:1.4,IV:1.3,II:1.1,I
 // boss slot or into Boss Rush, and never changes what "defeat all 10 bosses" means.
 // Once defeated it unlocks as the Shatterlord wizard class (see CLASSES, unlockWorld:101).
 const SHATTERLORD={name:"The Shatterlord",color:"#c9a8ff",shape:"shatterlord",tier:"Ω",weak:"fire",resist:"poison"};
+// nobody knows the Shatterlord's true name or tier until a Spellwalker has beaten
+// it once — every place its identity is shown to the player goes through these
+function bossDisplayName(en){
+  if(en && en.shape==="shatterlord" && !stats.bossesDefeated.includes(SHATTERLORD.name)) return "Unknown";
+  return en?en.name:"";
+}
+function bossDisplayTier(en){
+  if(en && en.shape==="shatterlord" && !stats.bossesDefeated.includes(SHATTERLORD.name)) return "?";
+  return en?en.tier:"";
+}
 const WORLD_W=2600, WORLD_H=1900;
 
 /* ================= state ================= */
@@ -1511,11 +1521,11 @@ function spawnProjectile(angle,friendly){
 function applyElemental(en,elem,dmg){
   if(!en||!elem||!en.isBoss) return dmg;
   if(en.weak===elem){
-    if(!en.calledWeak){ en.calledWeak=true; showToast("💥 "+en.name+" is weak to "+elem+"!",2200); }
+    if(!en.calledWeak){ en.calledWeak=true; showToast("💥 "+bossDisplayName(en)+" is weak to "+elem+"!",2200); }
     return dmg*1.5;
   }
   if(en.resist===elem){
-    if(!en.calledResist){ en.calledResist=true; showToast("🛡️ "+en.name+" resists "+elem+"!",2200); }
+    if(!en.calledResist){ en.calledResist=true; showToast("🛡️ "+bossDisplayName(en)+" resists "+elem+"!",2200); }
     return dmg*0.5;
   }
   return dmg;
@@ -1942,15 +1952,17 @@ function checkBossSpawn(){
     world.boss=makeEnemy("boss",bx,by,world.index,true,isShatterWorld?{useShatterlord:true}:null);
     world.bossSpawned=true;
     document.getElementById("compassWrap").hidden=false;
-    document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier;
+    const shownName=bossDisplayName(world.boss), shownTier=bossDisplayTier(world.boss);
+    document.getElementById("compassLbl").textContent=shownName.toUpperCase()+" · TIER "+shownTier;
     playSfx("boss");
-    showToast((isShatterWorld?"⚠️ The one who broke the world awaits... ":"")+world.boss.name+" (Tier "+world.boss.tier+") has awakened! Follow the golden arrow.",4600);
+    showToast((isShatterWorld?"⚠️ The one who broke the world awaits... ":"")+shownName+" (Tier "+shownTier+") has awakened! Follow the golden arrow.",4600);
   }
 }
 function onBossDefeated(){
   world.bossDefeated=true;
   document.getElementById("compassWrap").hidden=true;
-  if(!stats.bossesDefeated.includes(world.boss.name)){
+  const firstTimeDefeated=!stats.bossesDefeated.includes(world.boss.name);
+  if(firstTimeDefeated){
     stats.bossesDefeated.push(world.boss.name);
     saveStats();
   }
@@ -1978,7 +1990,12 @@ function onBossDefeated(){
   }
   world.stone={x:world.boss.x,y:world.boss.y,t:0};
   tryGrantItem(true);
-  showToast("The boss dropped a Teleport Stone! Walk into it to travel onward.",4200);
+  if(world.boss.shape==="shatterlord" && firstTimeDefeated){
+    showToast("The mysterious wizard falls... revealed as THE SHATTERLORD, the one who broke the world!",4400);
+    setTimeout(()=>showToast("The boss dropped a Teleport Stone! Walk into it to travel onward.",4200),4600);
+  } else {
+    showToast("The boss dropped a Teleport Stone! Walk into it to travel onward.",4200);
+  }
 }
 // ---- Boss Rush: fight all 10 named bosses back-to-back, in order ----
 function startBossRushWorld(){
@@ -2316,7 +2333,7 @@ function updateEnemy(en,dt){
       en.speed*=1.35;
       spawnBurst(en.x,en.y,"#ff2d55",20);
       cameraShake(10,0.3);
-      showToast(en.name+" becomes enraged!",2400);
+      showToast(bossDisplayName(en)+" becomes enraged!",2400);
     }
     en.specialCd=(en.specialCd||0)-dt;
     if(en.specialCd<=0){
@@ -2390,7 +2407,7 @@ function triggerBossSpecial(en){
     }
     updateHUD();
   }
-  showToast(en.name+" unleashes a devastating attack!",1800);
+  showToast(bossDisplayName(en)+" unleashes a devastating attack!",1800);
 }
 
 function triggerGameOver(){
