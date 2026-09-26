@@ -146,8 +146,8 @@
     background:#10152a;color:var(--muted);font-weight:800;font-size:11.5px;cursor:pointer;
     font-family:inherit;}
   .toggleBtn.sel{border-color:var(--good);color:var(--good);box-shadow:0 0 0 2px rgba(74,222,128,.2) inset;}
-  .loadoutRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;}
-  @media (max-width:460px){.loadoutRow{grid-template-columns:repeat(3,1fr);}}
+  .loadoutRow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;}
+  @media (max-width:460px){.loadoutRow{grid-template-columns:repeat(2,1fr);}}
   .loadoutChip{border:2px solid var(--panel-line);border-radius:10px;padding:8px 4px;
     background:#10152a;color:var(--muted);font-weight:800;font-size:10.5px;cursor:pointer;
     text-align:center;font-family:inherit;}
@@ -1044,15 +1044,21 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
   const cls=CLASSES.find(c=>c.key===sg.cls)||CLASSES[0];
   // recompute what this class guarantees fresh, so a save made before a class
   // was tuned (e.g. extra item slots added later) still gets the current minimum
-  const baseline={dmgMult:1,frost:false,lifesteal:0,hasDash:false,shieldCharges:0,
+  const baseline={maxHp:100,dmgMult:1,frost:false,lifesteal:0,hasDash:false,shieldCharges:0,
     speedMult:1,multishot:1,poison:false,minionCount:0,canPossess:false,
     xpMult:1,itemSlots:3,items:[],hasShadowStep:false,hasZeusJudgement:false,atkRate:0.42,hasRainbowNova:false,
     hasNatureNova:false,hasFreezeBurst:false,hasFireDash:false,hasShockwave:false,
-    pierce:false,hpRegen:0,thorns:0};
+    pierce:false,hpRegen:0,thorns:0,fireElement:false};
   cls.apply(baseline);
+  // bake permanent shop upgrades into the same guaranteed-minimum baseline as the
+  // class bonuses, so continuing a save always reflects upgrades bought since it
+  // was last saved (Math.max below folds it in without re-stacking on every continue)
+  applyMetaUpgrades(baseline);
   Object.assign(player,{
-    level:sg.level,xp:sg.xp,xpNext:sg.xpNext,maxHp:sg.maxHp,
-    hp:sg.maxHp,cls:sg.cls,name:sg.name,perksTaken:sg.perks||[],
+    level:sg.level,xp:sg.xp,xpNext:sg.xpNext,
+    maxHp:Math.max(sg.maxHp,baseline.maxHp),hp:Math.max(sg.maxHp,baseline.maxHp),
+    cls:sg.cls,name:sg.name,perksTaken:sg.perks||[],
+    fireElement:!!sg.fireElement||baseline.fireElement,
     dmgMult:Math.max(sg.dmgMult||1,baseline.dmgMult),
     frost:!!sg.frost||baseline.frost,
     lifesteal:Math.max(sg.lifesteal||0,baseline.lifesteal),
@@ -1272,6 +1278,7 @@ function buildShop(){
         stats.gold-=cost;
         stats.metaUpgrades[u.key]=lvl+1;
         saveStats();
+        checkAchievements();
         playSfx("levelup");
         buildShop();
         updateHUD();
