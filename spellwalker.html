@@ -119,6 +119,11 @@
     box-shadow:0 4px 0 #454a58;}
   #shockwaveBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #454a58;}
   #shockwaveBtn[hidden]{display:none;}
+  #shatterBtn{width:60px;height:60px;font-size:7.5px;border-color:#dcc8ff;
+    background:radial-gradient(circle at 35% 30%,#e0d4ff,#c9a8ff);color:#241542;
+    box-shadow:0 4px 0 #5b3fa8;}
+  #shatterBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #5b3fa8;}
+  #shatterBtn[hidden]{display:none;}
 
   /* ---------- difficulty & achievements ---------- */
   .diffRow{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
@@ -266,6 +271,7 @@
     <button id="freezeBtn" class="roundbtn" hidden>FREEZE</button>
     <button id="fireDashBtn" class="roundbtn" hidden>BLAZE</button>
     <button id="shockwaveBtn" class="roundbtn" hidden>SLAM</button>
+    <button id="shatterBtn" class="roundbtn" hidden>SHATTER</button>
     <button id="dashBtn" class="roundbtn" hidden>DASH</button>
     <button id="atkBtn" class="roundbtn">ATK</button>
   </div>
@@ -331,7 +337,7 @@
       <div class="storyText">
         <p>Long ago the realm was one connected land, until a shattering spell tore it into a hundred drifting worlds, each guarded by a monster twisted by the magic that made it.</p>
         <p>You are a Spellwalker — one of the rare few who can step between these worlds. Every monster you clear and every boss you defeat weakens the old barrier a little more, and every wizard you awaken along the way adds their power to yours.</p>
-        <p>Nobody knows what waits past World 100. Only Spellwalkers who have gone that far are starting to find out.</p>
+        <p>Whispers among Spellwalkers speak of the very wizard who cast the first shattering spell — still out there, still waiting, guarding the hundredth world. Nobody knows what happens if you actually beat it.</p>
       </div>
       <button class="bigbtn" id="storyCloseBtn">Close</button>
     </div>
@@ -415,7 +421,8 @@ function saveGame(){
       xpMult:player.xpMult,itemSlots:player.itemSlots,items:player.items,hasShadowStep:player.hasShadowStep,
       hasZeusJudgement:player.hasZeusJudgement,atkRate:player.atkRate,hasRainbowNova:player.hasRainbowNova,
       hasNatureNova:player.hasNatureNova,hasFreezeBurst:player.hasFreezeBurst,hasFireDash:player.hasFireDash,
-      hasShockwave:player.hasShockwave,pierce:player.pierce,hpRegen:player.hpRegen,thorns:player.thorns};
+      hasShockwave:player.hasShockwave,pierce:player.pierce,hpRegen:player.hpRegen,thorns:player.thorns,
+      hasShatterStorm:player.hasShatterStorm,fireElement:player.fireElement};
     localStorage.setItem("spellwalker_save",JSON.stringify(data));
   }catch(e){}
 }
@@ -512,6 +519,15 @@ const CLASSES=[
       p.lifesteal=(p.lifesteal||0)+0.1;
       p.maxHp=(p.maxHp||100)*1.2; p.hp=p.maxHp;
       p.hasRainbowNova=true;
+    }},
+  // the wizard whose own spell shattered the realm into a hundred worlds —
+  // faced as the unique Shatterlord boss at World 100, playable once it falls
+  {key:"shatterlord",name:"Shatterlord",color:"#c9a8ff",unlockWorld:101,tier:"Ω",desc:"The wizard who broke the world: +40% spell damage, frost-touched spells, +25% max HP, and Shatter Storm — a devastating crack of energy that damages and chills everything nearby.",
+    apply:p=>{
+      p.dmgMult=(p.dmgMult||1)+0.4;
+      p.frost=true;
+      p.maxHp=(p.maxHp||100)*1.25; p.hp=p.maxHp;
+      p.hasShatterStorm=true;
     }}
 ];
 
@@ -604,7 +620,8 @@ const ACHIEVEMENTS=[
   {key:"endless_10",icon:"♾️",name:"Endless Contender",desc:"Clear 10 bosses in a single Endless Boss Rush.",check:s=>(s.bossRushEndlessBest||0)>=10},
   {key:"rich",icon:"🪙",name:"Treasure Hoarder",desc:"Collect 500 total gold.",check:s=>(s.goldEarned||0)>=500},
   {key:"shopper",icon:"🛒",name:"Well Equipped",desc:"Buy your first permanent shop upgrade.",check:s=>Object.values(s.metaUpgrades||{}).some(v=>v>0)},
-  {key:"new_game_plus",icon:"🔁",name:"Around Again",desc:"Reach New Game+ by clearing World 100.",check:()=>maxWorldReached>100}
+  {key:"new_game_plus",icon:"🔁",name:"Around Again",desc:"Reach New Game+ by clearing World 100.",check:()=>maxWorldReached>100},
+  {key:"shatterlord_defeated",icon:"🔮",name:"The One Who Broke It",desc:"Defeat the Shatterlord at World 100 and unlock it as a wizard.",check:s=>s.bossesDefeated.includes(SHATTERLORD.name)}
 ];
 function checkAchievements(){
   const newly=[];
@@ -651,7 +668,12 @@ const BOSS_TYPES=[
 ];
 // flipped on purpose: the low-numbered "top" tiers (I-V) stay close together,
 // while the "lower" tiers (VI-X) hit a huge power cliff and are the real threats
-const BOSS_TIER_MULT={X:4.2,IX:3.6,VIII:3.2,VII:2.8,VI:2.5,V:1.4,IV:1.3,III:1.2,II:1.1,I:1.0};
+const BOSS_TIER_MULT={X:4.2,IX:3.6,VIII:3.2,VII:2.8,VI:2.5,V:1.4,IV:1.3,II:1.1,III:1.2,I:1.0,"Ω":6.0};
+// the unique World 100 (and every 100th world after, in New Game+) final boss —
+// kept separate from BOSS_TYPES so it never gets cycled into a normal world's
+// boss slot or into Boss Rush, and never changes what "defeat all 10 bosses" means.
+// Once defeated it unlocks as the Shatterlord wizard class (see CLASSES, unlockWorld:101).
+const SHATTERLORD={name:"The Shatterlord",color:"#c9a8ff",shape:"shatterlord",tier:"Ω",weak:"fire",resist:"poison"};
 const WORLD_W=2600, WORLD_H=1900;
 
 /* ================= state ================= */
@@ -685,6 +707,7 @@ function tryClassAbility(){
   else if(player.hasFreezeBurst) tryFreezeBurst();
   else if(player.hasFireDash) tryFireDash();
   else if(player.hasShockwave) tryShockwave();
+  else if(player.hasShatterStorm) tryShatterStorm();
 }
 function pollGamepad(){
   if(!navigator.getGamepads) return;
@@ -820,7 +843,7 @@ const player={
   hp:100,maxHp:100,level:1,xp:0,xpNext:10,
   speed:190,speedMult:1,atkRate:0.42,atkCd:0,
   baseDamage:14,dmgMult:1,projSpeed:440,projRadius:6,
-  cls:"fire",color:"#ff6b4a",name:"William",
+  cls:"fire",color:"#ff6b4a",name:"William",fireElement:false,
   frost:false,lifesteal:0,hasDash:false,dashCd:0,dashTimeLeft:0,
   shieldCharges:0,multishot:1,poison:false,minionCount:0,
   invuln:0,perksTaken:[],facingLocked:false,
@@ -833,6 +856,7 @@ const player={
   hasFreezeBurst:false,freezeCd:0,
   hasFireDash:false,fireDashCd:0,fireDashTimeLeft:0,
   hasShockwave:false,shockwaveCd:0,
+  hasShatterStorm:false,shatterCd:0,
   pierce:false,hpRegen:0,regenTimer:0,thorns:0
 };
 
@@ -881,7 +905,7 @@ function makeEnemy(type,x,y,index,isBoss,opts){
   // (needed for its randomized-order option); `index` still drives raw stat scaling,
   // which is what lets Endless Boss Rush escalate difficulty lap after lap
   const bossIdx=isBoss?((opts.forcedBossIdx!=null)?opts.forcedBossIdx:index%BOSS_TYPES.length):0;
-  const bossType=isBoss?BOSS_TYPES[bossIdx]:null;
+  const bossType=isBoss?(opts.useShatterlord?SHATTERLORD:BOSS_TYPES[bossIdx]):null;
   const tierMult=isBoss?(BOSS_TIER_MULT[bossType.tier]||1):1;
   const dm=DIFFICULTY_MULT[difficulty]||DIFFICULTY_MULT.normal;
   // New Game+: every full lap past World 100 adds another +50% to hp/damage
@@ -1050,7 +1074,7 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
   const baseline={maxHp:100,dmgMult:1,frost:false,lifesteal:0,hasDash:false,shieldCharges:0,
     speedMult:1,multishot:1,poison:false,minionCount:0,canPossess:false,
     xpMult:1,itemSlots:3,items:[],hasShadowStep:false,hasZeusJudgement:false,atkRate:0.42,hasRainbowNova:false,
-    hasNatureNova:false,hasFreezeBurst:false,hasFireDash:false,hasShockwave:false,
+    hasNatureNova:false,hasFreezeBurst:false,hasFireDash:false,hasShockwave:false,hasShatterStorm:false,
     pierce:false,hpRegen:0,thorns:0,fireElement:false};
   cls.apply(baseline);
   // bake permanent shop upgrades into the same guaranteed-minimum baseline as the
@@ -1084,6 +1108,7 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
     hasFreezeBurst:!!sg.hasFreezeBurst||baseline.hasFreezeBurst,freezeCd:0,
     hasFireDash:!!sg.hasFireDash||baseline.hasFireDash,fireDashCd:0,fireDashTimeLeft:0,
     hasShockwave:!!sg.hasShockwave||baseline.hasShockwave,shockwaveCd:0,
+    hasShatterStorm:!!sg.hasShatterStorm||baseline.hasShatterStorm,shatterCd:0,
     pierce:!!sg.pierce||baseline.pierce,
     hpRegen:Math.max(sg.hpRegen||0,baseline.hpRegen),regenTimer:0,
     thorns:Math.max(sg.thorns||0,baseline.thorns)
@@ -1098,7 +1123,7 @@ function resetPlayerStats(){
   Object.assign(player,{
     hp:100,maxHp:100,level:1,xp:0,xpNext:10,
     speed:190,speedMult:1,atkRate:0.42,atkCd:0,
-    dmgMult:1,frost:false,lifesteal:0,hasDash:false,dashCd:0,dashTimeLeft:0,
+    dmgMult:1,frost:false,lifesteal:0,hasDash:false,dashCd:0,dashTimeLeft:0,fireElement:false,
     shieldCharges:0,multishot:1,poison:false,minionCount:0,
     invuln:0,perksTaken:[],canPossess:false,possessing:null,possessCd:0,hostStats:null,r:16,
     xpMult:1,itemSlots:3,items:[],
@@ -1109,6 +1134,7 @@ function resetPlayerStats(){
     hasFreezeBurst:false,freezeCd:0,
     hasFireDash:false,fireDashCd:0,fireDashTimeLeft:0,
     hasShockwave:false,shockwaveCd:0,
+    hasShatterStorm:false,shatterCd:0,
     pierce:false,hpRegen:0,regenTimer:0,thorns:0
   });
   shadowClones.length=0;
@@ -1156,6 +1182,7 @@ function startGame(worldIndex,bossRush){
   document.getElementById("freezeBtn").hidden=!player.hasFreezeBurst;
   document.getElementById("fireDashBtn").hidden=!player.hasFireDash;
   document.getElementById("shockwaveBtn").hidden=!player.hasShockwave;
+  document.getElementById("shatterBtn").hidden=!player.hasShatterStorm;
   shadowClones.length=0;
   if(bossRush){
     bossRushActive=true; bossRushIndex=0; bossRushStartTime=performance.now();
@@ -1188,6 +1215,7 @@ function classBonusMessage(clsKey){
   if(clsKey==="ice") return "Ice Wizard bonus: your spells slow enemies, plus Deep Freeze — tap FREEZE to lock nearby enemies solid!";
   if(clsKey==="fire") return "Fire Wizard bonus: +15% spell damage, plus Blazing Dash — tap BLAZE to scorch everything around you!";
   if(clsKey==="tank") return "Stone Tank bonus: +30 max HP, plus Shockwave Slam — tap SLAM to smash and knock back nearby enemies!";
+  if(clsKey==="shatterlord") return "Shatterlord bonus: +40% spell damage, frost-touched spells, "+player.maxHp+" max HP, plus Shatter Storm — tap SHATTER to crack everything nearby!";
   return null;
 }
 
@@ -1403,6 +1431,7 @@ window.addEventListener("keydown",e=>{
   if(e.key.toLowerCase()==="c") tryFreezeBurst();
   if(e.key.toLowerCase()==="b") tryFireDash();
   if(e.key.toLowerCase()==="x") tryShockwave();
+  if(e.key.toLowerCase()==="v") tryShatterStorm();
   if(e.key==="Escape"){
     if(mode==="playing") openPause();
     else if(mode==="paused") closePause();
@@ -1446,6 +1475,7 @@ document.getElementById("natureBtn").addEventListener("pointerdown",e=>{e.preven
 document.getElementById("freezeBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryFreezeBurst();});
 document.getElementById("fireDashBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryFireDash();});
 document.getElementById("shockwaveBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShockwave();});
+document.getElementById("shatterBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShatterStorm();});
 document.getElementById("possessBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryPossess();});
 
 canvas.addEventListener("pointerdown",e=>{
@@ -1705,6 +1735,38 @@ function tryShockwave(){
   showToast(hitAny?"💥 Shockwave Slam sends enemies flying!":"💥 Shockwave Slam finds nothing nearby!",2400);
 }
 
+/* ---- Shatterlord: Shatter Storm — crack reality itself around you, dealing
+   heavy damage and chilling everything nearby, elemental fire tag included so
+   it can trigger a boss's fire weakness/resistance like the Fire Wizard's spells ---- */
+function tryShatterStorm(){
+  if(mode!=="playing"||!player.hasShatterStorm||player.shatterCd>0) return;
+  player.shatterCd=11.0;
+  const radius=260;
+  const dmg=player.baseDamage*player.dmgMult*2.0;
+  let hitAny=false;
+  world.enemies.forEach(en=>{
+    if(dist(player.x,player.y,en.x,en.y)<radius){
+      en.hp-=dmg; en.frozenT=Math.max(en.frozenT||0,0.9); en.slowT=Math.max(en.slowT,1.6);
+      spawnBurst(en.x,en.y,"#c9a8ff",14);
+      hitAny=true;
+    }
+  });
+  world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
+  world.enemies=world.enemies.filter(en=>!en.dead);
+  if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
+    world.boss.hp-=applyElemental(world.boss,"fire",dmg);
+    world.boss.frozenT=Math.max(world.boss.frozenT||0,0.6); world.boss.slowT=Math.max(world.boss.slowT,1.0);
+    spawnBurst(world.boss.x,world.boss.y,"#c9a8ff",18);
+    hitAny=true;
+    if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
+  }
+  cameraShake(11,0.32);
+  spawnBurst(player.x,player.y,"#c9a8ff",24);
+  playSfx("slam");
+  updateHUD();
+  showToast(hitAny?"💥 Shatter Storm cracks everything nearby!":"💥 Shatter Storm finds nothing nearby to break!",2400);
+}
+
 /* ---- Parasite: possess a nearby monster's body ---- */
 function meleeAttack(){
   const range=player.r+34;
@@ -1873,12 +1935,16 @@ function checkBossSpawn(){
     let bx,by;
     do{ bx=rand(120,WORLD_W-120); by=rand(120,WORLD_H-120); }
     while(dist(bx,by,world.spawn.x,world.spawn.y)<500);
-    world.boss=makeEnemy("boss",bx,by,world.index,true);
+    // World 100 (and every 100th world again in New Game+) is guarded by the
+    // Shatterlord instead of the usual rotating roster — the wizard who cast
+    // the spell that shattered the realm in the first place (see the Story screen)
+    const isShatterWorld=(world.index+1)%100===0;
+    world.boss=makeEnemy("boss",bx,by,world.index,true,isShatterWorld?{useShatterlord:true}:null);
     world.bossSpawned=true;
     document.getElementById("compassWrap").hidden=false;
     document.getElementById("compassLbl").textContent=world.boss.name.toUpperCase()+" · TIER "+world.boss.tier;
     playSfx("boss");
-    showToast(world.boss.name+" (Tier "+world.boss.tier+") has awakened! Follow the golden arrow.",4200);
+    showToast((isShatterWorld?"⚠️ The one who broke the world awaits... ":"")+world.boss.name+" (Tier "+world.boss.tier+") has awakened! Follow the golden arrow.",4600);
   }
 }
 function onBossDefeated(){
@@ -2054,6 +2120,7 @@ function updatePlayer(dt){
   player.freezeCd=Math.max(0,player.freezeCd-dt);
   player.fireDashCd=Math.max(0,player.fireDashCd-dt);
   player.shockwaveCd=Math.max(0,player.shockwaveCd-dt);
+  player.shatterCd=Math.max(0,player.shatterCd-dt);
 
   if(player.hpRegen>0 && player.hp>0){
     player.regenTimer-=dt;
@@ -2103,6 +2170,8 @@ function updatePlayer(dt){
   if(!fdb.hidden) fdb.style.opacity=player.fireDashCd>0?"0.45":"1";
   const swb=document.getElementById("shockwaveBtn");
   if(!swb.hidden) swb.style.opacity=player.shockwaveCd>0?"0.45":"1";
+  const shb=document.getElementById("shatterBtn");
+  if(!shb.hidden) shb.style.opacity=player.shatterCd>0?"0.45":"1";
 
   camera.x=player.x-viewW/2;
   camera.y=player.y-viewH/2;
@@ -2541,6 +2610,21 @@ function drawBoss(en){
   else if(en.shape==="ghost"){ drawGhost(en); crownY=en.r*0.85+14; }
   else { drawWizard(en.x,en.y,en.color,2.1,false,en.facing); crownY=46; }
   en.color=savedColor;
+  if(en.shape==="shatterlord"){
+    // broken crystal shards orbiting its head instead of a normal crown — the
+    // mark of the one wizard whose own spell shattered the whole world apart
+    ctx.save(); ctx.translate(en.x,en.y-crownY+10);
+    for(let i=0;i<6;i++){
+      const a=(en.bobT*1.4)+i*(Math.PI*2/6);
+      const sx=Math.cos(a)*24, sy=Math.sin(a)*11;
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(a);
+      ctx.globalAlpha=0.9; ctx.fillStyle="#e0d4ff";
+      ctx.beginPath(); ctx.moveTo(0,-8); ctx.lineTo(4,0); ctx.lineTo(0,8); ctx.lineTo(-4,0); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(en.x,en.y-crownY);
   ctx.fillStyle="#ffd54a";
