@@ -964,7 +964,13 @@ function buildClassGrid(){
     const div=document.createElement("div");
     div.className="classCard"+(locked?" locked":"");
     const tierBadge='<span class="tierBadge">TIER '+c.tier+'</span>';
-    if(locked){
+    // the Shatterlord stays a total mystery on the class-select screen too, until
+    // it's actually been fought and beaten once — every other locked class still
+    // shows its real name plainly, same as always
+    const isMysteryClass=c.key==="shatterlord" && !stats.bossesDefeated.includes(SHATTERLORD.name);
+    if(locked && isMysteryClass){
+      div.innerHTML='<h3><span class="tierBadge">TIER ?</span><span class="swatch" style="background:#3a4468"></span>🔒 ???</h3><p>A mysterious wizard, unseen and unknown. Someone will have to find out the hard way.</p>';
+    } else if(locked){
       div.innerHTML='<h3>'+tierBadge+'<span class="swatch" style="background:#3a4468"></span>🔒 '+c.name+'</h3><p>Unlocks at World '+c.unlockWorld+'. Keep exploring!</p>';
     } else {
       div.innerHTML='<h3>'+tierBadge+'<span class="swatch" style="background:'+c.color+'"></span>'+c.name+'</h3><p>'+c.desc+'</p>';
@@ -1396,8 +1402,13 @@ function openAchievements(){
     const unlocked=stats.achievementsUnlocked.includes(a.key);
     const row=document.createElement("div");
     row.className="achRow"+(unlocked?" unlocked":" locked");
+    // this one trophy stays a mystery in the list too, until it's actually earned —
+    // every other locked achievement still shows its real name/description as usual
+    const isMysteryAch=a.key==="shatterlord_defeated" && !unlocked;
+    const shownName=isMysteryAch?"???":a.name;
+    const shownDesc=isMysteryAch?"A mysterious trophy. Its secret is still out there.":a.desc;
     row.innerHTML='<div class="achIcon">'+(unlocked?a.icon:"🔒")+'</div>'+
-      '<div><h4>'+a.name+'</h4><p>'+a.desc+'</p></div>';
+      '<div><h4>'+shownName+'</h4><p>'+shownDesc+'</p></div>';
     list.appendChild(row);
   });
   document.getElementById("pauseScreen").hidden=true;
