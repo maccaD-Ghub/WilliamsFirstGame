@@ -703,9 +703,9 @@ function makeEnemy(type,x,y,index,isBoss){
   const tierMult=isBoss?(BOSS_TIER_MULT[bossType.tier]||1):1;
   const dm=DIFFICULTY_MULT[difficulty]||DIFFICULTY_MULT.normal;
   const baseHp=(isBoss?(150+index*26)*tierMult:16+index*3.2)*dm.hp;
-  // bosses always deal a flat 20 contact/attack damage, regardless of tier or world —
+  // bosses always deal a flat 15 contact/attack damage, regardless of tier or world —
   // only the difficulty setting scales it up or down from there
-  const baseDmg=(isBoss?20:4+index*0.55)*dm.dmg;
+  const baseDmg=(isBoss?15:4+index*0.55)*dm.dmg;
   // speed scales much more gently than hp/damage so a top-tier boss is a real
   // bullet-sponge threat rather than literally unhittable
   const baseSpeed=isBoss?(128+index*0.6)*(1+(tierMult-1)*0.12):rand(58,86)+index*0.5;
