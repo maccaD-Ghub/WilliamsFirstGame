@@ -2878,6 +2878,11 @@ function render(){
 const minimapCanvas=document.getElementById("minimap");
 const minimapCtx=minimapCanvas?minimapCanvas.getContext("2d"):null;
 if(minimapCanvas){ minimapCanvas.width=110; minimapCanvas.height=80; }
+// how many world units are shown across the minimap's width -- the "zoom
+// level" of the radar. Kept uniform on both axes (not stretched to fill the
+// box) so a circular blip stays circular; the box's own 110x80 aspect ratio
+// just means a bit less vertical world is visible than horizontal.
+const MINIMAP_RANGE=700;
 function drawMinimap(){
   if(!minimapCtx) return;
   const w=minimapCanvas.width, h=minimapCanvas.height;
@@ -2885,21 +2890,33 @@ function drawMinimap(){
   mctx.clearRect(0,0,w,h);
   mctx.fillStyle="rgba(255,255,255,0.06)";
   mctx.fillRect(0,0,w,h);
-  const sx=w/WORLD_W, sy=h/WORLD_H;
+  // radar-style minimap: always centered on the player and scrolling with
+  // them, instead of a fixed shrunk-down view of the whole world
+  const scale=w/MINIMAP_RANGE;
+  const halfW=w/2/scale, halfH=h/2/scale;
+  const toMap=(wx,wy)=>[(wx-player.x)*scale+w/2,(wy-player.y)*scale+h/2];
+  mctx.save();
+  mctx.beginPath(); mctx.rect(0,0,w,h); mctx.clip();
   world.enemies.forEach(en=>{
+    if(Math.abs(en.x-player.x)>halfW+20 || Math.abs(en.y-player.y)>halfH+20) return;
+    const [mx,my]=toMap(en.x,en.y);
     mctx.fillStyle=en.elite?"#ffd54a":"rgba(220,80,90,0.85)";
-    mctx.beginPath(); mctx.arc(en.x*sx,en.y*sy,en.elite?2.4:1.6,0,Math.PI*2); mctx.fill();
+    mctx.beginPath(); mctx.arc(mx,my,en.elite?2.4:1.6,0,Math.PI*2); mctx.fill();
   });
   if(world.boss && !world.boss.dead){
+    const [mx,my]=toMap(world.boss.x,world.boss.y);
     mctx.fillStyle="#ff4d6d";
-    mctx.beginPath(); mctx.arc(world.boss.x*sx,world.boss.y*sy,3.5,0,Math.PI*2); mctx.fill();
+    mctx.beginPath(); mctx.arc(mx,my,3.5,0,Math.PI*2); mctx.fill();
   }
   if(world.stone){
+    const [mx,my]=toMap(world.stone.x,world.stone.y);
     mctx.fillStyle="#ffd54a";
-    mctx.beginPath(); mctx.arc(world.stone.x*sx,world.stone.y*sy,3,0,Math.PI*2); mctx.fill();
+    mctx.beginPath(); mctx.arc(mx,my,3,0,Math.PI*2); mctx.fill();
   }
+  mctx.restore();
+  // the player always sits dead-center; everything else scrolls around them
   mctx.fillStyle="#4fd1ff";
-  mctx.beginPath(); mctx.arc(player.x*sx,player.y*sy,2.6,0,Math.PI*2); mctx.fill();
+  mctx.beginPath(); mctx.arc(w/2,h/2,2.6,0,Math.PI*2); mctx.fill();
   mctx.strokeStyle="rgba(255,255,255,0.25)"; mctx.lineWidth=1;
   mctx.strokeRect(0.5,0.5,w-1,h-1);
 }
