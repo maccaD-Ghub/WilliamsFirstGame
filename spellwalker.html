@@ -2913,6 +2913,14 @@ function drawMinimap(){
     mctx.fillStyle="#ffd54a";
     mctx.beginPath(); mctx.arc(mx,my,3,0,Math.PI*2); mctx.fill();
   }
+  // your own spell casts (projectiles) show up as tiny fast-moving blips too,
+  // in whatever color that spell already renders as in the main view
+  projectiles.forEach(p=>{
+    if(Math.abs(p.x-player.x)>halfW+20 || Math.abs(p.y-player.y)>halfH+20) return;
+    const [mx,my]=toMap(p.x,p.y);
+    mctx.fillStyle=p.color||"#ffffff";
+    mctx.beginPath(); mctx.arc(mx,my,1,0,Math.PI*2); mctx.fill();
+  });
   mctx.restore();
   // the player always sits dead-center; everything else scrolls around them
   mctx.fillStyle="#4fd1ff";
