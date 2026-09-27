@@ -554,11 +554,12 @@ const CLASSES=[
     }},
   // the wizard whose own spell shattered the realm into a hundred worlds —
   // faced as the unique Shatterlord boss at World 100, playable once it falls
-  {key:"shatterlord",name:"Shatterlord",color:"#c9a8ff",unlockWorld:101,tier:"Ω",desc:"The wizard who broke the world: +40% spell damage, frost-touched spells, +25% max HP, and Shatter Storm — a devastating crack of energy that damages and chills everything nearby.",
+  {key:"shatterlord",name:"Shatterlord",color:"#c9a8ff",unlockWorld:101,tier:"Ω",desc:"The wizard who broke the world: +60% spell damage, frost-touched spells, +45% max HP, +10% movement speed, and a colossal Shatter Storm — a wider, harder-hitting crack of energy that chills everything nearby and heals you for a share of the damage it deals.",
     apply:p=>{
-      p.dmgMult=(p.dmgMult||1)+0.4;
+      p.dmgMult=(p.dmgMult||1)+0.6;
       p.frost=true;
-      p.maxHp=(p.maxHp||100)*1.25; p.hp=p.maxHp;
+      p.maxHp=(p.maxHp||100)*1.45; p.hp=p.maxHp;
+      p.speedMult=(p.speedMult||1)*1.1;
       p.hasShatterStorm=true;
     }}
 ];
@@ -1281,7 +1282,7 @@ function classBonusMessage(clsKey){
   if(clsKey==="ice") return "Ice Wizard bonus: your spells slow enemies, plus Deep Freeze — tap FREEZE to lock nearby enemies solid!";
   if(clsKey==="fire") return "Fire Wizard bonus: +15% spell damage, plus Blazing Dash — tap BLAZE to scorch everything around you!";
   if(clsKey==="tank") return "Stone Tank bonus: +30 max HP, plus Shockwave Slam — tap SLAM to smash and knock back nearby enemies!";
-  if(clsKey==="shatterlord") return "Shatterlord bonus: +40% spell damage, frost-touched spells, "+player.maxHp+" max HP, plus Shatter Storm — tap SHATTER to crack everything nearby!";
+  if(clsKey==="shatterlord") return "Shatterlord bonus: +60% spell damage, frost-touched spells, "+player.maxHp+" max HP, +10% speed, plus Shatter Storm — tap SHATTER to crack everything nearby and heal from the damage it deals!";
   return null;
 }
 
@@ -1858,16 +1859,20 @@ function tryShockwave(){
 
 /* ---- Shatterlord: Shatter Storm — crack reality itself around you, dealing
    heavy damage and chilling everything nearby, elemental fire tag included so
-   it can trigger a boss's fire weakness/resistance like the Fire Wizard's spells ---- */
+   it can trigger a boss's fire weakness/resistance like the Fire Wizard's spells.
+   The Shatterlord also draws power back from what it breaks: a quarter of the
+   total damage the Storm deals is returned to the caster as healing. ---- */
 function tryShatterStorm(){
   if(mode!=="playing"||!player.hasShatterStorm||player.shatterCd>0) return;
-  player.shatterCd=11.0;
-  const radius=260;
-  const dmg=player.baseDamage*player.dmgMult*2.0;
+  player.shatterCd=9.0;
+  const radius=320;
+  const dmg=player.baseDamage*player.dmgMult*2.75;
   let hitAny=false;
+  let totalDealt=0;
   world.enemies.forEach(en=>{
     if(dist(player.x,player.y,en.x,en.y)<radius){
-      en.hp-=dmg; en.frozenT=Math.max(en.frozenT||0,0.9); en.slowT=Math.max(en.slowT,1.6);
+      totalDealt+=Math.min(dmg,Math.max(en.hp,0));
+      en.hp-=dmg; en.frozenT=Math.max(en.frozenT||0,1.3); en.slowT=Math.max(en.slowT,2.2);
       spawnBurst(en.x,en.y,"#c9a8ff",14);
       hitAny=true;
     }
@@ -1875,17 +1880,24 @@ function tryShatterStorm(){
   world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
   world.enemies=world.enemies.filter(en=>!en.dead);
   if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
-    world.boss.hp-=applyElemental(world.boss,"fire",dmg);
-    world.boss.frozenT=Math.max(world.boss.frozenT||0,0.6); world.boss.slowT=Math.max(world.boss.slowT,1.0);
+    const bossDmg=applyElemental(world.boss,"fire",dmg);
+    totalDealt+=Math.min(bossDmg,Math.max(world.boss.hp,0));
+    world.boss.hp-=bossDmg;
+    world.boss.frozenT=Math.max(world.boss.frozenT||0,0.9); world.boss.slowT=Math.max(world.boss.slowT,1.6);
     spawnBurst(world.boss.x,world.boss.y,"#c9a8ff",18);
     hitAny=true;
     if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
   }
-  cameraShake(11,0.32);
+  let healed=0;
+  if(totalDealt>0){
+    healed=Math.min(totalDealt*0.25, player.maxHp-player.hp);
+    if(healed>0) player.hp+=healed;
+  }
+  cameraShake(13,0.36);
   spawnBurst(player.x,player.y,"#c9a8ff",24);
   playSfx("slam");
   updateHUD();
-  showToast(hitAny?"💥 Shatter Storm cracks everything nearby!":"💥 Shatter Storm finds nothing nearby to break!",2400);
+  showToast(hitAny?"💥 Shatter Storm cracks everything nearby, drawing back "+Math.round(healed)+" HP!":"💥 Shatter Storm finds nothing nearby to break!",2400);
 }
 
 /* ---- Astral Wizard: Gravity Well — pull every nearby enemy inward and
