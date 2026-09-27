@@ -13,8 +13,6 @@
   h1,h2,h3,.pixel{font-family:'Press Start 2P','Courier New',monospace;}
   #app{position:fixed;inset:0;overflow:hidden;background:var(--bg);}
   canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
-  canvas#game3d{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
-  canvas#game3d[hidden]{display:none;}
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;top:0;left:0;right:0;
@@ -232,7 +230,6 @@
 
 <div id="app">
   <canvas id="game"></canvas>
-  <canvas id="game3d" hidden></canvas>
   <canvas id="minimap" hidden></canvas>
 
   <div id="hud" hidden>
@@ -398,11 +395,6 @@
   </div>
 </div>
 
-<!-- Optional 3D (isometric) view. Pinned UMD build so it defines a global
-     THREE. If this fails to load (offline, ad-blocker, old CDN mirror) the
-     game below checks for `window.THREE` before ever touching it and just
-     stays in the classic 2D view -- nothing about gameplay depends on it. -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
 (function(){
 "use strict";
@@ -464,28 +456,6 @@ function loadDifficulty(){
 function saveDifficulty(d){ try{ localStorage.setItem("spellwalker_difficulty",d); }catch(e){} }
 let difficulty=loadDifficulty();
 const DIFFICULTY_MULT={easy:{hp:0.7,dmg:0.7},normal:{hp:1,dmg:1},hard:{hp:1.4,dmg:1.3}};
-
-/* ---- render mode: the game is always 3D now -- there is no 2D toggle for
-   the player to pick. "2d" only ever happens automatically, as a silent
-   fallback on a device that can't do WebGL/Three.js, or if the 3D scene hits
-   a runtime error mid-game (see render3D()'s catch block below); once that
-   happens it's remembered so this device doesn't retry a broken 3D view on
-   every future launch. ---- */
-function loadRenderMode(){
-  try{
-    const r=localStorage.getItem("spellwalker_rendermode");
-    return (r==="2d")?"2d":"3d";
-  }catch(e){ return "3d"; }
-}
-function saveRenderMode(){ try{ localStorage.setItem("spellwalker_rendermode",renderMode); }catch(e){} }
-let renderMode=loadRenderMode();
-let told3DFallback=false; // only mention the 2D fallback to the player once per session
-// The optional Three.js scene lives in `three` once init3D() (defined far
-// below, near the other rendering code) succeeds; declared up here so early
-// functions like resize() can safely check `if(three)` without a
-// temporal-dead-zone error, long before that section of the file runs.
-let three=null;
-let three3DFailed=false;
 
 /* ---- lifetime stats & achievements: separate from the run save ---- */
 function loadStats(){
@@ -729,7 +699,6 @@ function resize(){
   canvas.height=Math.round(viewH*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.imageSmoothingEnabled=false;
-  if(three) resize3D();
 }
 window.addEventListener("resize",resize);
 resize();
@@ -1215,11 +1184,6 @@ document.getElementById("bossRushBtn").addEventListener("click",()=>{
 function startGame(worldIndex,bossRush){
   document.getElementById("startScreen").hidden=true;
   document.getElementById("hud").hidden=false;
-  applyRenderMode();
-  if(renderMode==="2d" && !told3DFallback){
-    told3DFallback=true;
-    setTimeout(()=>{ if(mode==="playing") showToast("This device can't run the 3D view, so we're using the classic 2D view instead.",4200); },5200);
-  }
   document.getElementById("minimap").hidden=false;
   document.getElementById("joyBase").hidden=false;
   document.getElementById("rightControls").hidden=false;
@@ -2860,492 +2824,6 @@ function drawParticle(p){
   ctx.restore();
 }
 
-/* ================================================================
-   OPTIONAL 3D (ISOMETRIC) VIEW
-   ================================================================
-   A second, independent rendering path on top of Three.js. It never
-   changes any game state -- it only READS the same player/world/
-   enemies/projectiles/particles the 2D canvas above already draws
-   from, and turns each entity into a simple low-poly 3D shape seen
-   from a fixed isometric angle. `three`/`three3DFailed` are declared
-   near the top of the file (with renderMode) so early code can check
-   them safely; everything else lives here, next to the 2D draw code
-   it mirrors. If Three.js never loaded, or this device has no WebGL,
-   init3D() just returns false forever and the game stays in the
-   classic 2D view -- see applyRenderMode() and loop() below. */
-
-const game3dCanvas=document.getElementById("game3d");
-
-function has3DSupport(){
-  if(typeof THREE==="undefined") return false;
-  try{
-    const test=document.createElement("canvas");
-    return !!(test.getContext("webgl")||test.getContext("experimental-webgl"));
-  }catch(e){ return false; }
-}
-
-function disposeObject3D(obj){
-  obj.traverse(o=>{
-    if(o.geometry) o.geometry.dispose();
-    if(o.material){
-      if(Array.isArray(o.material)) o.material.forEach(m=>m.dispose());
-      else o.material.dispose();
-    }
-  });
-}
-
-function init3D(){
-  if(three) return true;
-  if(three3DFailed) return false;
-  if(!has3DSupport()){ three3DFailed=true; return false; }
-  try{
-    const renderer=new THREE.WebGLRenderer({canvas:game3dCanvas,antialias:true});
-    renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
-
-    const scene=new THREE.Scene();
-
-    const viewSize=380; // half-height of the ortho frustum, in world units -- the camera's "zoom level"
-    const camera=new THREE.OrthographicCamera(-viewSize,viewSize,viewSize,-viewSize,1,4000);
-    const isoYaw=Math.PI/4;                     // classic 45° turn around
-    const isoPitch=Math.atan(1/Math.sqrt(2));   // classic ~35.26° isometric tilt
-    const camDist=1400;
-
-    const ambient=new THREE.AmbientLight(0xffffff,0.7);
-    const sun=new THREE.DirectionalLight(0xffffff,0.75);
-    sun.position.set(-1,1.6,-1);
-    scene.add(ambient,sun);
-
-    const groundMat=new THREE.MeshLambertMaterial({color:0x204a30});
-    const ground=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000),groundMat);
-    ground.rotation.x=-Math.PI/2;
-    scene.add(ground);
-
-    const decorGroup=new THREE.Group();
-    scene.add(decorGroup);
-
-    three={
-      renderer,scene,camera,groundMat,ground,decorGroup,
-      isoYaw,isoPitch,camDist,viewSize,
-      decorArrayRef:null,
-      enemyMeshes:new Map(),
-      minionMeshes:new Map(),
-      shadowMeshes:new Map(),
-      projMeshes:new Map(),
-      particleMeshes:new Map(),
-      playerMesh:null,
-      stoneMesh:null
-    };
-    resize3D();
-    return true;
-  }catch(e){
-    three3DFailed=true; three=null;
-    return false;
-  }
-}
-
-function resize3D(){
-  if(!three) return;
-  const w=window.innerWidth, h=window.innerHeight;
-  three.renderer.setSize(w,h,false);
-  const aspect=w/Math.max(1,h);
-  const vs=three.viewSize;
-  three.camera.left=-vs*aspect; three.camera.right=vs*aspect;
-  three.camera.top=vs; three.camera.bottom=-vs;
-  three.camera.updateProjectionMatrix();
-}
-
-function applyRenderMode(){
-  const use3D=renderMode==="3d" && !!three;
-  document.getElementById("game").hidden=use3D;
-  document.getElementById("game3d").hidden=!use3D;
-}
-
-/* ---- simple primitive builders, one per creature/decor silhouette;
-   every builder sets group.userData.bodyMat to whichever material should
-   get tinted (slow/frozen blue, elemental color, etc.) each frame ---- */
-function mat3DFlat(color,opts){ return new THREE.MeshLambertMaterial(Object.assign({color:color},opts||{})); }
-function mat3DGlow(color,opts){ return new THREE.MeshBasicMaterial(Object.assign({color:color},opts||{})); }
-// a simple pair of dark eye-dots on the front (+z, before the group's own
-// facing rotation is applied) of every creature, echoing the 2D sprites'
-// own little square eyes so nothing in the 3D view is a faceless blob.
-// Each creature gets its OWN eye material (both its eyes share one, since
-// they always look identical) rather than one material shared across every
-// creature in the scene -- that sharing would be a real bug the moment
-// anything fades a single creature's materials (see the shadow-clone fade
-// in render3D() below): mutating a shared material's opacity would fade
-// every other creature's eyes in the world along with it.
-function addFace3D(g,cy,cz,spacing,eyeR){
-  const mat=new THREE.MeshBasicMaterial({color:"#20161f"});
-  const l=new THREE.Mesh(new THREE.SphereGeometry(eyeR,6,5),mat);
-  l.position.set(-spacing,cy,cz); g.add(l);
-  const r=new THREE.Mesh(new THREE.SphereGeometry(eyeR,6,5),mat);
-  r.position.set(spacing,cy,cz); g.add(r);
-  g.userData.eyeMat=mat;
-}
-// fades every material this helper knows about on a creature group in one
-// call, used for the shadow-clone fade-out below. Body/hat/head/eye keys are
-// only set on groups that actually have them (see each build3D* function).
-function setGroupOpacity3D(g,op){
-  ["bodyMat","hatMat","headMat","eyeMat"].forEach(function(k){
-    const m=g.userData[k];
-    if(m){ m.transparent=true; m.opacity=op; }
-  });
-}
-
-function build3DWizard(color,scale){
-  const s=scale||1;
-  const g=new THREE.Group();
-  const robeMat=mat3DFlat(color);
-  const robe=new THREE.Mesh(new THREE.ConeGeometry(11*s,26*s,8),robeMat);
-  robe.position.y=13*s; g.add(robe);
-  const headMat=mat3DFlat("#f2c9a0");
-  const head=new THREE.Mesh(new THREE.SphereGeometry(6.2*s,8,6),headMat);
-  head.position.y=30*s; g.add(head);
-  addFace3D(g,30.5*s,5.5*s,2.8*s,1.4*s);
-  const hatMat=mat3DFlat(color);
-  const hat=new THREE.Mesh(new THREE.ConeGeometry(7.5*s,15*s,8),hatMat);
-  hat.position.y=40*s; g.add(hat);
-  g.userData.bodyMat=robeMat; g.userData.hatMat=hatMat; g.userData.headMat=headMat;
-  return g;
-}
-function build3DSlime(color,r){
-  const g=new THREE.Group();
-  const mat=mat3DFlat(color);
-  const body=new THREE.Mesh(new THREE.SphereGeometry(r,10,7),mat);
-  body.scale.y=0.75; body.position.y=r*0.75;
-  g.add(body); g.userData.bodyMat=mat;
-  addFace3D(g,r*0.78,r*0.78,r*0.32,r*0.28);
-  return g;
-}
-function build3DBeast(color,r){
-  const g=new THREE.Group();
-  const mat=mat3DFlat(color);
-  const body=new THREE.Mesh(new THREE.BoxGeometry(r*1.7,r*1.3,r*1.7),mat);
-  body.position.y=r*0.75; g.add(body);
-  [-1,1].forEach(side=>{
-    const ear=new THREE.Mesh(new THREE.ConeGeometry(r*0.28,r*0.7,6),mat);
-    ear.position.set(side*r*0.55,r*1.55,0); g.add(ear);
-  });
-  addFace3D(g,r*0.92,r*0.8,r*0.4,r*0.18);
-  g.userData.bodyMat=mat;
-  return g;
-}
-function build3DGhost(color,r){
-  const g=new THREE.Group();
-  const mat=mat3DFlat(color,{transparent:true,opacity:0.82});
-  const body=new THREE.Mesh(new THREE.SphereGeometry(r*0.9,10,8),mat);
-  body.position.y=r*0.9; g.add(body);
-  addFace3D(g,r*0.95,r*0.72,r*0.32,r*0.24);
-  g.userData.bodyMat=mat;
-  return g;
-}
-function build3DWisp(color,r){
-  const g=new THREE.Group();
-  const mat=mat3DGlow(color);
-  const core=new THREE.Mesh(new THREE.SphereGeometry(r*0.55,8,6),mat);
-  core.position.y=r*1.1; g.add(core);
-  const haloMat=mat3DGlow(color,{transparent:true,opacity:0.3});
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(r,8,6),haloMat);
-  halo.position.y=r*1.1; g.add(halo);
-  addFace3D(g,r*1.15,r*0.42,r*0.2,r*0.17);
-  g.userData.bodyMat=mat; g.userData.haloMat=haloMat;
-  return g;
-}
-function build3DImp(color,r){
-  const g=new THREE.Group();
-  const mat=mat3DFlat(color);
-  const body=new THREE.Mesh(new THREE.SphereGeometry(r*0.7,8,6),mat);
-  body.position.y=r*0.7; g.add(body);
-  [-1,1].forEach(side=>{
-    const horn=new THREE.Mesh(new THREE.ConeGeometry(r*0.16,r*0.55,6),mat);
-    horn.position.set(side*r*0.35,r*1.25,0); g.add(horn);
-  });
-  const tail=new THREE.Mesh(new THREE.CylinderGeometry(r*0.08,r*0.03,r*0.9,5),mat);
-  tail.position.set(0,r*0.35,r*0.7); tail.rotation.x=Math.PI/2.4;
-  g.add(tail);
-  addFace3D(g,r*0.78,r*0.56,r*0.26,r*0.18);
-  g.userData.bodyMat=mat;
-  return g;
-}
-function build3DCrab(color,r){
-  const g=new THREE.Group();
-  const mat=mat3DFlat(color);
-  const body=new THREE.Mesh(new THREE.SphereGeometry(r*0.95,10,6),mat);
-  body.scale.y=0.55; body.position.y=r*0.55; g.add(body);
-  [-1,1].forEach(side=>{
-    const pincer=new THREE.Mesh(new THREE.SphereGeometry(r*0.28,6,5),mat);
-    pincer.position.set(side*r*1.1,r*0.55,0); g.add(pincer);
-  });
-  addFace3D(g,r*0.65,r*0.76,r*0.4,r*0.26);
-  g.userData.bodyMat=mat;
-  return g;
-}
-const ENEMY_BUILDERS_3D={
-  slime:(c,r)=>build3DSlime(c,r), beast:(c,r)=>build3DBeast(c,r),
-  skeleton:(c)=>build3DWizard(c,1.0), ghost:(c,r)=>build3DGhost(c,r),
-  wisp:(c,r)=>build3DWisp(c,r), imp:(c,r)=>build3DImp(c,r), crab:(c,r)=>build3DCrab(c,r)
-};
-
-function build3DCrown(){
-  const g=new THREE.Group();
-  const mat=mat3DFlat("#ffd54a");
-  const band=new THREE.Mesh(new THREE.TorusGeometry(9,2,6,10),mat);
-  band.rotation.x=Math.PI/2; g.add(band);
-  for(let i=0;i<3;i++){
-    const spike=new THREE.Mesh(new THREE.ConeGeometry(2.4,7,5),mat);
-    spike.position.set((i-1)*8,6,0); g.add(spike);
-  }
-  return g;
-}
-function build3DShatterShards(){
-  const g=new THREE.Group();
-  const mat=mat3DFlat("#e0d4ff",{transparent:true,opacity:0.9});
-  for(let i=0;i<6;i++){
-    g.add(new THREE.Mesh(new THREE.OctahedronGeometry(4.5),mat));
-  }
-  return g;
-}
-function build3DBossFor(en){
-  let body;
-  if(en.shape==="slime") body=build3DSlime(en.color,en.r);
-  else if(en.shape==="beast") body=build3DBeast(en.color,en.r);
-  else if(en.shape==="ghost") body=build3DGhost(en.color,en.r);
-  else body=build3DWizard(en.color,2.1);
-  const g=new THREE.Group();
-  g.add(body);
-  if(en.shape==="shatterlord"){
-    const shards=build3DShatterShards();
-    shards.position.y=56;
-    g.add(shards);
-    g.userData.shards=shards;
-  } else {
-    const crown=build3DCrown();
-    let crownY;
-    if(en.shape==="slime") crownY=en.r*0.85+12;
-    else if(en.shape==="beast") crownY=en.r*1.0+16;
-    else if(en.shape==="ghost") crownY=en.r*0.85+14;
-    else crownY=46;
-    crown.position.y=crownY;
-    g.add(crown);
-  }
-  g.userData.bodyMat=body.userData.bodyMat;
-  return g;
-}
-
-function build3DDecor(shape,color){
-  const g=new THREE.Group();
-  const mat=mat3DFlat(color);
-  switch(shape){
-    case "tree": {
-      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(1.6,2,10,6),mat3DFlat("#5a4230"));
-      trunk.position.y=5; g.add(trunk);
-      const leaves=new THREE.Mesh(new THREE.ConeGeometry(11,22,8),mat);
-      leaves.position.y=20; g.add(leaves);
-      break; }
-    case "crystal": {
-      const c=new THREE.Mesh(new THREE.OctahedronGeometry(10),mat);
-      c.position.y=10; g.add(c);
-      break; }
-    case "rock": {
-      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(9),mat);
-      r.scale.y=0.65; r.position.y=6; g.add(r);
-      break; }
-    case "coral": {
-      for(let i=0;i<3;i++){
-        const branch=new THREE.Mesh(new THREE.CylinderGeometry(1.6,2.4,12+i*4,5),mat);
-        branch.position.set((i-1)*5,6+i*2,0); branch.rotation.z=(i-1)*0.3;
-        g.add(branch);
-      }
-      break; }
-    case "swirl": {
-      const t=new THREE.Mesh(new THREE.TorusGeometry(8,2.2,6,12,Math.PI*1.5),mat);
-      t.position.y=10; t.rotation.x=Math.PI/2.3; g.add(t);
-      break; }
-    case "mushroom": {
-      const stem=new THREE.Mesh(new THREE.CylinderGeometry(1.6,2,8,6),mat3DFlat("#e8ddc8"));
-      stem.position.y=4; g.add(stem);
-      const cap=new THREE.Mesh(new THREE.SphereGeometry(8,8,6,0,Math.PI*2,0,Math.PI/2),mat);
-      cap.position.y=8; g.add(cap);
-      break; }
-    case "cloud": {
-      [[0,0,0,7],[6,1,0,5],[-5,0.5,1,4.5]].forEach(pt=>{
-        const puff=new THREE.Mesh(new THREE.SphereGeometry(pt[3],8,6),mat);
-        puff.position.set(pt[0],18+pt[1],pt[2]); g.add(puff);
-      });
-      break; }
-    case "pillar": {
-      const p=new THREE.Mesh(new THREE.BoxGeometry(7,20,7),mat);
-      p.position.y=10; g.add(p);
-      break; }
-    default: {
-      const b=new THREE.Mesh(new THREE.BoxGeometry(8,8,8),mat);
-      b.position.y=4; g.add(b);
-    }
-  }
-  return g;
-}
-
-function rebuildDecor3D(){
-  if(!three) return;
-  three.decorGroup.children.slice().forEach(c=>{ three.decorGroup.remove(c); disposeObject3D(c); });
-  world.decor.forEach(d=>{
-    const m=build3DDecor(world.biome.decorShape,world.biome.decor);
-    m.position.set(d.x,0,d.y);
-    m.rotation.y=d.rot||0;
-    m.scale.setScalar(d.s||1);
-    three.decorGroup.add(m);
-  });
-}
-
-function positionEnemyGroup3D(g,en){
-  const bob=(en.type==="slime"||en.shape==="slime")?Math.sin(en.bobT*6)*3
-    :(en.type==="wisp")?Math.sin(en.bobT*5)*5
-    :(en.type==="ghost"||en.shape==="ghost")?Math.sin(en.bobT*3)*4
-    :0;
-  g.position.set(en.x,bob,en.y);
-  g.rotation.y=-(en.facing||0)+Math.PI/2;
-  if(g.userData.bodyMat) g.userData.bodyMat.color.set(en.slowT>0?"#8fd3ff":en.color);
-  if(g.userData.shards){
-    g.userData.shards.children.forEach((shard,i)=>{
-      const a=(en.bobT*1.4)+i*(Math.PI*2/6);
-      shard.position.set(Math.cos(a)*22,Math.sin(a)*6,0);
-    });
-  }
-  if(en.elite && !g.userData.eliteRingMat){
-    const ringMat=mat3DFlat("#ffd54a",{transparent:true});
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(Math.max(4,en.r*1.35),1.5,6,16),ringMat);
-    ring.rotation.x=Math.PI/2;
-    g.add(ring);
-    g.userData.eliteRingMat=ringMat;
-  }
-  if(g.userData.eliteRingMat){
-    g.userData.eliteRingMat.opacity=0.75+Math.sin(en.bobT*4)*0.2;
-  }
-}
-
-function syncEnemies3D(){
-  const t=three, live=new Set();
-  world.enemies.forEach(en=>{
-    live.add(en);
-    let g=t.enemyMeshes.get(en);
-    if(!g){
-      const build=ENEMY_BUILDERS_3D[en.type]||build3DSlime;
-      g=build(en.color,en.r);
-      t.scene.add(g); t.enemyMeshes.set(en,g);
-    }
-    positionEnemyGroup3D(g,en);
-  });
-  if(world.boss && !world.boss.dead){
-    live.add(world.boss);
-    let g=t.enemyMeshes.get(world.boss);
-    if(!g){ g=build3DBossFor(world.boss); t.scene.add(g); t.enemyMeshes.set(world.boss,g); }
-    positionEnemyGroup3D(g,world.boss);
-  }
-  for(const [key,mesh] of t.enemyMeshes){
-    if(!live.has(key)){ t.scene.remove(mesh); disposeObject3D(mesh); t.enemyMeshes.delete(key); }
-  }
-}
-
-function syncPool3D(map,arr,build,update){
-  const t=three, live=new Set();
-  arr.forEach(item=>{
-    let mesh=map.get(item);
-    if(!mesh){ mesh=build(item); t.scene.add(mesh); map.set(item,mesh); }
-    update(mesh,item);
-    live.add(item);
-  });
-  for(const [item,mesh] of map){
-    if(!live.has(item)){ t.scene.remove(mesh); disposeObject3D(mesh); map.delete(item); }
-  }
-}
-
-function updateCamera3D(targetX,targetZ){
-  const t=three;
-  const cx=targetX+Math.cos(t.isoYaw)*Math.cos(t.isoPitch)*t.camDist;
-  const cz=targetZ+Math.sin(t.isoYaw)*Math.cos(t.isoPitch)*t.camDist;
-  const cy=Math.sin(t.isoPitch)*t.camDist;
-  t.camera.position.set(cx,cy,cz);
-  t.camera.lookAt(targetX,0,targetZ);
-}
-
-function render3D(){
-  const t=three;
-  if(!t) return;
-  try{
-    if(t.decorArrayRef!==world.decor){
-      t.groundMat.color.set(world.biome.ground);
-      rebuildDecor3D();
-      t.decorArrayRef=world.decor;
-    }
-    t.ground.position.set(player.x,0,player.y);
-
-    if(!t.playerMesh){
-      t.playerMesh=build3DWizard(player.color,1.15);
-      t.scene.add(t.playerMesh);
-    }
-    const activeColor=player.possessing?player.possessing.color:player.color;
-    t.playerMesh.userData.bodyMat.color.set(activeColor);
-    if(t.playerMesh.userData.hatMat) t.playerMesh.userData.hatMat.color.set(activeColor);
-    t.playerMesh.position.set(player.x,0,player.y);
-    t.playerMesh.rotation.y=-(player.facing||0)+Math.PI/2;
-    t.playerMesh.visible=!(player.invuln>0 && Math.floor(player.invuln*20)%2===0);
-
-    syncEnemies3D();
-
-    syncPool3D(t.minionMeshes,minions,
-      ()=>{ const g=new THREE.Group(); const mat=mat3DFlat("#c9d1e0");
-        g.add(new THREE.Mesh(new THREE.SphereGeometry(9,8,6),mat));
-        addFace3D(g,0,7.2,3.2,2.6);
-        g.userData.bodyMat=mat; return g; },
-      (g,m)=>{ g.position.set(m.x,9,m.y); });
-
-    syncPool3D(t.shadowMeshes,shadowClones,
-      ()=>build3DWizard("#2e1065",1.05),
-      (g,c)=>{
-        g.position.set(c.x,0,c.y);
-        g.rotation.y=-(player.facing||0)+Math.PI/2;
-        const op=Math.min(0.65,c.life/1.2);
-        setGroupOpacity3D(g,op);
-      });
-
-    syncPool3D(t.projMeshes,projectiles,
-      p=>{ const mat=mat3DGlow(p.color); const g=new THREE.Mesh(new THREE.SphereGeometry(p.r,6,5),mat);
-        g.userData.bodyMat=mat; return g; },
-      (g,p)=>{ g.position.set(p.x,14,p.y); });
-
-    syncPool3D(t.particleMeshes,particles,
-      p=>new THREE.Mesh(new THREE.SphereGeometry(Math.max(1,p.r*0.7),5,4),mat3DGlow(p.color,{transparent:true})),
-      (g,p)=>{ g.position.set(p.x,10,p.y); g.material.opacity=clamp(p.life*2,0,1); });
-
-    if(world.stone){
-      if(!t.stoneMesh){
-        t.stoneMesh=new THREE.Mesh(new THREE.OctahedronGeometry(13),mat3DGlow("#ffc84a",{transparent:true}));
-        t.scene.add(t.stoneMesh);
-      }
-      t.stoneMesh.visible=true;
-      t.stoneMesh.position.set(world.stone.x,16+Math.sin((world.stone.t||0)*4)*3,world.stone.y);
-      t.stoneMesh.rotation.y+=0.03;
-    } else if(t.stoneMesh){
-      t.stoneMesh.visible=false;
-    }
-
-    updateCamera3D(player.x,player.y);
-    t.renderer.render(t.scene,t.camera);
-  }catch(e){
-    // Something about this device/driver didn't like a 3D call mid-game --
-    // rather than freezing, drop back to the always-reliable 2D view for
-    // the rest of this session instead of leaving the player stuck.
-    three3DFailed=true; three=null; renderMode="2d"; saveRenderMode();
-    applyRenderMode();
-    render();
-  }
-}
-
-if(renderMode==="3d"){
-  if(!init3D()){ renderMode="2d"; saveRenderMode(); }
-}
-applyRenderMode();
-
 function render(){
   const realCamX=camera.x, realCamY=camera.y;
   if(shakeT>0){
@@ -3427,17 +2905,13 @@ function drawMinimap(){
 }
 
 /* ================= main loop ================= */
-function renderFrame(){
-  if(renderMode==="3d" && three) render3D();
-  else render();
-}
 function loop(now){
   const dt=Math.min(0.033,(now-lastTime)/1000);
   lastTime=now;
   pollGamepad();
   if(hitPauseT>0){
     hitPauseT=Math.max(0,hitPauseT-dt);
-    renderFrame();
+    render();
     requestAnimationFrame(loop);
     return;
   }
@@ -3464,7 +2938,7 @@ function loop(now){
     zeusFlashT=Math.max(0,zeusFlashT-dt);
     document.getElementById("zeusFlash").style.opacity=(zeusFlashT/0.28*0.55).toFixed(2);
   }
-  renderFrame();
+  render();
   requestAnimationFrame(loop);
 }
 
