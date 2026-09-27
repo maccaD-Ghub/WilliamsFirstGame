@@ -124,6 +124,11 @@
     box-shadow:0 4px 0 #5b3fa8;}
   #shatterBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #5b3fa8;}
   #shatterBtn[hidden]{display:none;}
+  #gravityBtn{width:60px;height:60px;font-size:7.5px;border-color:#5eead4;
+    background:radial-gradient(circle at 35% 30%,#5eead4,#2dd4bf);color:#022c22;
+    box-shadow:0 4px 0 #0f766e;}
+  #gravityBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #0f766e;}
+  #gravityBtn[hidden]{display:none;}
 
   /* ---------- difficulty & achievements ---------- */
   .diffRow{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
@@ -168,6 +173,7 @@
   .shopBuyBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #8a5f10;}
   .shopBuyBtn:disabled{opacity:.4;cursor:default;}
   #goldRow{color:var(--gold);font-weight:800;font-size:13px;margin-bottom:10px;}
+  #essenceRow{color:#2dd4bf;font-weight:800;font-size:13px;margin-bottom:10px;}
   textarea#saveCodeBox{width:100%;min-height:110px;border-radius:10px;border:1px solid var(--panel-line);
     background:#0d1120;color:var(--ink);font-family:monospace;font-size:11px;padding:10px;
     margin-bottom:14px;resize:vertical;}
@@ -248,6 +254,7 @@
       <div class="hud-card"><span id="worldTag">WORLD 1</span> &nbsp; <span id="worldName">Emerald Forest</span></div>
       <div class="hud-card" id="itemsCard" hidden>Charms: <span id="itemsLabel">0/3</span></div>
       <div class="hud-card">🪙 <span id="goldLabel">0</span></div>
+      <div class="hud-card">🔮 <span id="essenceLabel">0</span></div>
     </div>
   </div>
 
@@ -272,6 +279,7 @@
     <button id="fireDashBtn" class="roundbtn" hidden>BLAZE</button>
     <button id="shockwaveBtn" class="roundbtn" hidden>SLAM</button>
     <button id="shatterBtn" class="roundbtn" hidden>SHATTER</button>
+    <button id="gravityBtn" class="roundbtn" hidden>GRAVITY</button>
     <button id="dashBtn" class="roundbtn" hidden>DASH</button>
     <button id="atkBtn" class="roundbtn">ATK</button>
   </div>
@@ -284,6 +292,7 @@
         and bosses, and teleport across a whole realm of worlds.</p>
       <input id="nameInput" maxlength="14" placeholder="Type your wizard name...">
       <div class="diffRow" id="diffRow">
+        <button class="diffBtn" data-d="kid">KIDS</button>
         <button class="diffBtn" data-d="easy">EASY</button>
         <button class="diffBtn" data-d="normal">NORMAL</button>
         <button class="diffBtn" data-d="hard">HARD</button>
@@ -299,6 +308,7 @@
         <button class="toggleBtn" id="brEndlessToggle">♾️ Endless</button>
       </div>
       <div><button class="bigbtn secondary" id="shopBtn">🪙 Shop</button></div>
+      <div><button class="bigbtn secondary" id="forgeBtn">🔨 Forge</button></div>
       <div><button class="bigbtn secondary" id="achievementsBtn">🏆 Achievements</button></div>
       <div><button class="bigbtn secondary" id="storyBtn">📖 Story</button></div>
       <div><button class="bigbtn secondary" id="saveCodeBtn">💾 Backup Save</button></div>
@@ -327,6 +337,17 @@
       <div id="goldRow">Gold: 0</div>
       <div class="shopGrid" id="shopGrid"></div>
       <button class="bigbtn" id="shopCloseBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- FORGE -->
+  <div class="overlay" id="forgeScreen" hidden>
+    <div class="sheet">
+      <h2 class="title pixel" style="font-size:17px;">🔨 FORGE</h2>
+      <p class="subtitle">Spend Essence dropped by monsters to permanently enhance a charm</p>
+      <div id="essenceRow">Essence: 0</div>
+      <div class="shopGrid" id="forgeGrid"></div>
+      <button class="bigbtn" id="forgeCloseBtn">Close</button>
     </div>
   </div>
 
@@ -422,7 +443,8 @@ function saveGame(){
       hasZeusJudgement:player.hasZeusJudgement,atkRate:player.atkRate,hasRainbowNova:player.hasRainbowNova,
       hasNatureNova:player.hasNatureNova,hasFreezeBurst:player.hasFreezeBurst,hasFireDash:player.hasFireDash,
       hasShockwave:player.hasShockwave,pierce:player.pierce,hpRegen:player.hpRegen,thorns:player.thorns,
-      hasShatterStorm:player.hasShatterStorm,fireElement:player.fireElement};
+      hasShatterStorm:player.hasShatterStorm,fireElement:player.fireElement,
+      hasGravityWell:player.hasGravityWell};
     localStorage.setItem("spellwalker_save",JSON.stringify(data));
   }catch(e){}
 }
@@ -450,24 +472,29 @@ let maxWorldReached=loadProgress();
 function loadDifficulty(){
   try{
     const d=localStorage.getItem("spellwalker_difficulty");
-    return (d==="easy"||d==="normal"||d==="hard")?d:"normal";
+    return (d==="kid"||d==="easy"||d==="normal"||d==="hard")?d:"normal";
   }catch(e){ return "normal"; }
 }
 function saveDifficulty(d){ try{ localStorage.setItem("spellwalker_difficulty",d); }catch(e){} }
 let difficulty=loadDifficulty();
-const DIFFICULTY_MULT={easy:{hp:0.7,dmg:0.7},normal:{hp:1,dmg:1},hard:{hp:1.4,dmg:1.3}};
+// "kid" mode sits well below Easy — monsters hit for well under half damage and
+// have well under half HP, so a younger sibling just learning the controls can
+// still explore and win fights without needing precise dodging or timing
+const DIFFICULTY_MULT={kid:{hp:0.4,dmg:0.35},easy:{hp:0.7,dmg:0.7},normal:{hp:1,dmg:1},hard:{hp:1.4,dmg:1.3}};
 
 /* ---- lifetime stats & achievements: separate from the run save ---- */
 function loadStats(){
   const fallback={totalKills:0,totalDeaths:0,bossesDefeated:[],classesPlayed:[],
     achievementsUnlocked:[],bossRushBestTime:null,bossRushBestTimes:{},bossRushEndlessBest:0,
-    gold:0,goldEarned:0,metaUpgrades:{hp:0,dmg:0,speed:0,xp:0,itemSlot:0}};
+    gold:0,goldEarned:0,metaUpgrades:{hp:0,dmg:0,speed:0,xp:0,itemSlot:0},
+    essence:0,forgeUpgrades:{}};
   try{
     const raw=localStorage.getItem("spellwalker_stats");
     const s=raw?JSON.parse(raw):null;
     const merged=Object.assign({},fallback,s||{});
     merged.bossRushBestTimes=Object.assign({},fallback.bossRushBestTimes,(s&&s.bossRushBestTimes)||{});
     merged.metaUpgrades=Object.assign({},fallback.metaUpgrades,(s&&s.metaUpgrades)||{});
+    merged.forgeUpgrades=Object.assign({},fallback.forgeUpgrades,(s&&s.forgeUpgrades)||{});
     return merged;
   }catch(e){ return fallback; }
 }
@@ -520,6 +547,11 @@ const CLASSES=[
       p.maxHp=(p.maxHp||100)*1.2; p.hp=p.maxHp;
       p.hasRainbowNova=true;
     }},
+  {key:"astral",name:"Astral Wizard",color:"#2dd4bf",unlockWorld:35,tier:"S",desc:"A wanderer who bends space itself: +20% movement speed, plus Gravity Well — an ability that pulls every nearby enemy inward and crushes them together for heavy damage.",
+    apply:p=>{
+      p.speedMult=(p.speedMult||1)*1.2;
+      p.hasGravityWell=true;
+    }},
   // the wizard whose own spell shattered the realm into a hundred worlds —
   // faced as the unique Shatterlord boss at World 100, playable once it falls
   {key:"shatterlord",name:"Shatterlord",color:"#c9a8ff",unlockWorld:101,tier:"Ω",desc:"The wizard who broke the world: +40% spell damage, frost-touched spells, +25% max HP, and Shatter Storm — a devastating crack of energy that damages and chills everything nearby.",
@@ -561,15 +593,19 @@ const PERKS=[
   {key:"thorns",name:"Thorned Hide",color:"#65a30d",desc:"Enemies that touch you take damage back.",apply:p=>{p.thorns=(p.thorns||0)+8;}}
 ];
 
+// each charm's apply(p, lvl) takes an optional Forge level (0-FORGE_MAX, see
+// FORGE_UPGRADES below) that scales up its effect by +50% per level — a level
+// is a permanent, account-wide upgrade, so a forged charm is stronger every
+// time it's found from then on, in every future run
 const ITEMS=[
-  {key:"ruby",name:"Ruby Charm",color:"#ff6b4a",desc:"+5% spell damage.",apply:p=>{p.dmgMult=(p.dmgMult||1)+0.05;}},
-  {key:"emerald",name:"Emerald Charm",color:"#4ade80",desc:"+10 max HP.",apply:p=>{p.maxHp+=10;p.hp=Math.min(p.maxHp,p.hp+10);}},
-  {key:"sapphire",name:"Sapphire Charm",color:"#4fd1ff",desc:"+8% movement speed.",apply:p=>{p.speedMult=(p.speedMult||1)*1.08;}},
-  {key:"amber",name:"Amber Charm",color:"#f59e0b",desc:"+5% lifesteal.",apply:p=>{p.lifesteal=(p.lifesteal||0)+0.05;}},
-  {key:"minionspell",name:"Minion Spell",color:"#c9d1e0",desc:"Summons one extra minion to fight at your side.",apply:p=>{p.minionCount=(p.minionCount||0)+1;}},
-  {key:"topaz",name:"Topaz Charm",color:"#fbbf24",desc:"+8% XP gained.",apply:p=>{p.xpMult=(p.xpMult||1)+0.08;}},
-  {key:"onyx",name:"Onyx Charm",color:"#4b5563",desc:"+6% spell damage.",apply:p=>{p.dmgMult=(p.dmgMult||1)+0.06;}},
-  {key:"pearl",name:"Pearl Charm",color:"#f5f3ff",desc:"+15 max HP and a small heal.",apply:p=>{p.maxHp+=15;p.hp=Math.min(p.maxHp,p.hp+15);}}
+  {key:"ruby",name:"Ruby Charm",color:"#ff6b4a",desc:"+5% spell damage.",apply:(p,lvl)=>{p.dmgMult=(p.dmgMult||1)+0.05*(1+(lvl||0)*0.5);}},
+  {key:"emerald",name:"Emerald Charm",color:"#4ade80",desc:"+10 max HP.",apply:(p,lvl)=>{const n=10*(1+(lvl||0)*0.5);p.maxHp+=n;p.hp=Math.min(p.maxHp,p.hp+n);}},
+  {key:"sapphire",name:"Sapphire Charm",color:"#4fd1ff",desc:"+8% movement speed.",apply:(p,lvl)=>{p.speedMult=(p.speedMult||1)*(1+0.08*(1+(lvl||0)*0.5));}},
+  {key:"amber",name:"Amber Charm",color:"#f59e0b",desc:"+5% lifesteal.",apply:(p,lvl)=>{p.lifesteal=(p.lifesteal||0)+0.05*(1+(lvl||0)*0.5);}},
+  {key:"minionspell",name:"Minion Spell",color:"#c9d1e0",desc:"Summons one extra minion to fight at your side.",apply:(p,lvl)=>{p.minionCount=(p.minionCount||0)+1+(lvl||0);}},
+  {key:"topaz",name:"Topaz Charm",color:"#fbbf24",desc:"+8% XP gained.",apply:(p,lvl)=>{p.xpMult=(p.xpMult||1)+0.08*(1+(lvl||0)*0.5);}},
+  {key:"onyx",name:"Onyx Charm",color:"#4b5563",desc:"+6% spell damage.",apply:(p,lvl)=>{p.dmgMult=(p.dmgMult||1)+0.06*(1+(lvl||0)*0.5);}},
+  {key:"pearl",name:"Pearl Charm",color:"#f5f3ff",desc:"+15 max HP and a small heal.",apply:(p,lvl)=>{const n=15*(1+(lvl||0)*0.5);p.maxHp+=n;p.hp=Math.min(p.maxHp,p.hp+n);}}
 ];
 
 // a small curated slice of PERKS offered as a guaranteed starting pick on the
@@ -595,6 +631,13 @@ function applyMetaUpgrades(p){
   if(m.xp) p.xpMult=(p.xpMult||1)+m.xp*0.05;
   if(m.itemSlot) p.itemSlots=(p.itemSlots||3)+m.itemSlot;
 }
+// ---- Forge: spend Essence (dropped by monsters, separate currency from Gold)
+// to permanently enhance one of the 8 charms in ITEMS, up to FORGE_MAX levels
+// each. Unlike the Shop's flat stat boosts, a Forge level only pays off once
+// that specific charm is actually found in a run — a complementary, higher-
+// ceiling way to spend monster drops on long-term progress.
+const FORGE_MAX=3;
+const FORGE_COST=l=>40+l*35;
 function shuffle(arr){
   const a=arr.slice();
   for(let i=a.length-1;i>0;i--){
@@ -718,6 +761,7 @@ function tryClassAbility(){
   else if(player.hasFireDash) tryFireDash();
   else if(player.hasShockwave) tryShockwave();
   else if(player.hasShatterStorm) tryShatterStorm();
+  else if(player.hasGravityWell) tryGravityWell();
 }
 function pollGamepad(){
   if(!navigator.getGamepads) return;
@@ -867,6 +911,7 @@ const player={
   hasFireDash:false,fireDashCd:0,fireDashTimeLeft:0,
   hasShockwave:false,shockwaveCd:0,
   hasShatterStorm:false,shatterCd:0,
+  hasGravityWell:false,gravityCd:0,
   pierce:false,hpRegen:0,regenTimer:0,thorns:0
 };
 
@@ -1091,6 +1136,7 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
     speedMult:1,multishot:1,poison:false,minionCount:0,canPossess:false,
     xpMult:1,itemSlots:3,items:[],hasShadowStep:false,hasZeusJudgement:false,atkRate:0.42,hasRainbowNova:false,
     hasNatureNova:false,hasFreezeBurst:false,hasFireDash:false,hasShockwave:false,hasShatterStorm:false,
+    hasGravityWell:false,
     pierce:false,hpRegen:0,thorns:0,fireElement:false};
   cls.apply(baseline);
   // bake permanent shop upgrades into the same guaranteed-minimum baseline as the
@@ -1125,6 +1171,7 @@ document.getElementById("continueBtn").addEventListener("click",()=>{
     hasFireDash:!!sg.hasFireDash||baseline.hasFireDash,fireDashCd:0,fireDashTimeLeft:0,
     hasShockwave:!!sg.hasShockwave||baseline.hasShockwave,shockwaveCd:0,
     hasShatterStorm:!!sg.hasShatterStorm||baseline.hasShatterStorm,shatterCd:0,
+    hasGravityWell:!!sg.hasGravityWell||baseline.hasGravityWell,gravityCd:0,
     pierce:!!sg.pierce||baseline.pierce,
     hpRegen:Math.max(sg.hpRegen||0,baseline.hpRegen),regenTimer:0,
     thorns:Math.max(sg.thorns||0,baseline.thorns)
@@ -1151,6 +1198,7 @@ function resetPlayerStats(){
     hasFireDash:false,fireDashCd:0,fireDashTimeLeft:0,
     hasShockwave:false,shockwaveCd:0,
     hasShatterStorm:false,shatterCd:0,
+    hasGravityWell:false,gravityCd:0,
     pierce:false,hpRegen:0,regenTimer:0,thorns:0
   });
   shadowClones.length=0;
@@ -1199,6 +1247,7 @@ function startGame(worldIndex,bossRush){
   document.getElementById("fireDashBtn").hidden=!player.hasFireDash;
   document.getElementById("shockwaveBtn").hidden=!player.hasShockwave;
   document.getElementById("shatterBtn").hidden=!player.hasShatterStorm;
+  document.getElementById("gravityBtn").hidden=!player.hasGravityWell;
   shadowClones.length=0;
   if(bossRush){
     bossRushActive=true; bossRushIndex=0; bossRushStartTime=performance.now();
@@ -1227,6 +1276,7 @@ function classBonusMessage(clsKey){
   if(clsKey==="shadow") return "Shadow Lord bonus: Dash unlocked, plus Shadow Step — tap SHADOW to turn your own shadow into a duplicate that fights at your side!";
   if(clsKey==="god") return "God Wizard bonus: +50% damage, "+player.maxHp+" max HP, +25% speed, and every ability — DASH, SHADOW, and ZEUS all ready to use!";
   if(clsKey==="rainbow") return "Rainbow God bonus: frost & poison spells, +10% lifesteal, "+player.maxHp+" max HP, plus Rainbow Nova — tap NOVA to erupt a ring of elemental bolts!";
+  if(clsKey==="astral") return "Astral Wizard bonus: +20% speed, plus Gravity Well — tap GRAVITY to pull nearby enemies inward and crush them together!";
   if(clsKey==="nature") return "Nature Wizard bonus: 8% lifesteal, plus Nature's Blessing — tap BLESS to heal up and gain a shield!";
   if(clsKey==="ice") return "Ice Wizard bonus: your spells slow enemies, plus Deep Freeze — tap FREEZE to lock nearby enemies solid!";
   if(clsKey==="fire") return "Fire Wizard bonus: +15% spell damage, plus Blazing Dash — tap BLAZE to scorch everything around you!";
@@ -1246,6 +1296,8 @@ function updateHUD(){
   document.getElementById("itemsLabel").textContent=player.items.length+"/"+player.itemSlots;
   const goldLbl=document.getElementById("goldLabel");
   if(goldLbl) goldLbl.textContent=stats.gold||0;
+  const essLbl=document.getElementById("essenceLabel");
+  if(essLbl) essLbl.textContent=stats.essence||0;
 }
 let toastTimer=null;
 function showToast(msg,ms){
@@ -1340,6 +1392,43 @@ document.getElementById("shopBtn").addEventListener("click",()=>{
 });
 document.getElementById("shopCloseBtn").addEventListener("click",()=>{
   document.getElementById("shopScreen").hidden=true;
+});
+function buildForge(){
+  document.getElementById("essenceRow").textContent="Essence: "+(stats.essence||0);
+  const grid=document.getElementById("forgeGrid");
+  grid.innerHTML="";
+  if(!stats.forgeUpgrades) stats.forgeUpgrades={};
+  ITEMS.forEach(item=>{
+    const lvl=stats.forgeUpgrades[item.key]||0;
+    const maxed=lvl>=FORGE_MAX;
+    const cost=maxed?0:FORGE_COST(lvl);
+    const row=document.createElement("div");
+    row.className="shopRow";
+    row.style.borderLeftColor=item.color;
+    row.innerHTML='<div class="shopInfo"><h4>'+item.name+' (Lv '+lvl+'/'+FORGE_MAX+')</h4><p>'+item.desc+'</p></div>'+
+      '<button class="shopBuyBtn" '+(maxed?"disabled":"")+'>'+(maxed?"MAX":("🔮 "+cost))+'</button>';
+    const btn=row.querySelector(".shopBuyBtn");
+    if(!maxed){
+      btn.disabled=(stats.essence||0)<cost;
+      btn.addEventListener("click",()=>{
+        if((stats.essence||0)<cost) return;
+        stats.essence-=cost;
+        stats.forgeUpgrades[item.key]=lvl+1;
+        saveStats();
+        playSfx("levelup");
+        buildForge();
+        updateHUD();
+      });
+    }
+    grid.appendChild(row);
+  });
+}
+document.getElementById("forgeBtn").addEventListener("click",()=>{
+  buildForge();
+  document.getElementById("forgeScreen").hidden=false;
+});
+document.getElementById("forgeCloseBtn").addEventListener("click",()=>{
+  document.getElementById("forgeScreen").hidden=true;
 });
 document.getElementById("storyBtn").addEventListener("click",()=>{
   document.getElementById("storyScreen").hidden=false;
@@ -1453,6 +1542,7 @@ window.addEventListener("keydown",e=>{
   if(e.key.toLowerCase()==="b") tryFireDash();
   if(e.key.toLowerCase()==="x") tryShockwave();
   if(e.key.toLowerCase()==="v") tryShatterStorm();
+  if(e.key.toLowerCase()==="t") tryGravityWell();
   if(e.key==="Escape"){
     if(mode==="playing") openPause();
     else if(mode==="paused") closePause();
@@ -1497,6 +1587,7 @@ document.getElementById("freezeBtn").addEventListener("pointerdown",e=>{e.preven
 document.getElementById("fireDashBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryFireDash();});
 document.getElementById("shockwaveBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShockwave();});
 document.getElementById("shatterBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryShatterStorm();});
+document.getElementById("gravityBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryGravityWell();});
 document.getElementById("possessBtn").addEventListener("pointerdown",e=>{e.preventDefault();tryPossess();});
 
 canvas.addEventListener("pointerdown",e=>{
@@ -1549,6 +1640,14 @@ function grantGold(n){
   updateHUD();
   checkAchievements();
 }
+// Essence: the Forge's own currency, dropped by monsters alongside gold —
+// see FORGE_UPGRADES/buildForge for what it's spent on
+function grantEssence(n){
+  if(!n) return;
+  stats.essence=(stats.essence||0)+n;
+  saveStats();
+  updateHUD();
+}
 // shared cleanup for any regular (non-boss) enemy kill: XP, loot roll, stats, achievements
 function killEnemy(en){
   if(en.dead) return;
@@ -1556,6 +1655,7 @@ function killEnemy(en){
   stats.totalKills++;
   grantXP(en.elite?6:2);
   grantGold(en.elite?(8+Math.floor(rand(0,6))):(1+Math.floor(rand(0,2))));
+  grantEssence(en.elite?(3+Math.floor(rand(0,3))):(Math.random()<0.35?1:0));
   tryGrantItem(en.elite?true:false);
   spawnBurst(en.x,en.y,en.color,en.elite?24:14);
   playSfx("death");
@@ -1788,6 +1888,42 @@ function tryShatterStorm(){
   showToast(hitAny?"💥 Shatter Storm cracks everything nearby!":"💥 Shatter Storm finds nothing nearby to break!",2400);
 }
 
+/* ---- Astral Wizard: Gravity Well — pull every nearby enemy inward and
+   crush them together for heavy damage ---- */
+function tryGravityWell(){
+  if(mode!=="playing"||!player.hasGravityWell||player.gravityCd>0) return;
+  player.gravityCd=9.0;
+  const radius=260;
+  const dmg=player.baseDamage*player.dmgMult*1.5;
+  let hitAny=false;
+  world.enemies.forEach(en=>{
+    const d=dist(player.x,player.y,en.x,en.y);
+    if(d<radius && d>en.r+player.r){
+      en.hp-=dmg;
+      const a=Math.atan2(player.y-en.y,player.x-en.x);
+      const pull=Math.min(d*0.5,60);
+      en.x+=Math.cos(a)*pull; en.y+=Math.sin(a)*pull;
+      en.slowT=Math.max(en.slowT,1.2);
+      spawnBurst(en.x,en.y,"#2dd4bf",10);
+      hitAny=true;
+    }
+  });
+  world.enemies.forEach(en=>{ if(en.hp<=0 && !en.dead) killEnemy(en); });
+  world.enemies=world.enemies.filter(en=>!en.dead);
+  if(world.boss && !world.boss.dead && dist(player.x,player.y,world.boss.x,world.boss.y)<radius+world.boss.r){
+    world.boss.hp-=dmg*0.6; // bosses barely budge and take reduced damage, same pattern as Shockwave
+    world.boss.slowT=Math.max(world.boss.slowT,0.8);
+    spawnBurst(world.boss.x,world.boss.y,"#2dd4bf",14);
+    hitAny=true;
+    if(world.boss.hp<=0 && !world.boss.dead){ world.boss.dead=true; onBossDefeated(); }
+  }
+  spawnBurst(player.x,player.y,"#2dd4bf",22);
+  cameraShake(9,0.28);
+  playSfx("ability");
+  updateHUD();
+  showToast(hitAny?"🌌 Gravity Well pulls everything inward!":"🌌 Gravity Well finds nothing nearby to pull!",2400);
+}
+
 /* ---- Parasite: possess a nearby monster's body ---- */
 function meleeAttack(){
   const range=player.r+34;
@@ -1883,12 +2019,13 @@ function tryGrantItem(guaranteed){
   }
   if(!guaranteed && Math.random()>0.15) return;
   const item=ITEMS[Math.floor(rand(0,ITEMS.length))];
-  item.apply(player);
+  const forgeLvl=(stats.forgeUpgrades&&stats.forgeUpgrades[item.key])||0;
+  item.apply(player,forgeLvl);
   player.items.push(item.key);
   updateHUD();
   saveGame();
   playSfx("pickup");
-  showToast("Found "+item.name+"! ("+player.items.length+"/"+player.itemSlots+" slots) "+item.desc,3400);
+  showToast("Found "+item.name+(forgeLvl>0?" (Forged +"+forgeLvl+")":"")+"! ("+player.items.length+"/"+player.itemSlots+" slots) "+item.desc,3400);
 }
 // fills a pool of `total` perk cards, optionally forcing a specific perk into
 // slot 0. When `total` is bigger than the number of unique perks (Priest asked
@@ -1984,6 +2121,7 @@ function onBossDefeated(){
   refreshBossRushButton();
   grantXP(12);
   grantGold(25+(BOSS_TIER_MULT[world.boss.tier]||1)*8|0);
+  grantEssence(10+(BOSS_TIER_MULT[world.boss.tier]||1)*3|0);
   if(bossRushActive){
     bossRushIndex++;
     if(bossRushEndless){
@@ -2149,6 +2287,7 @@ function updatePlayer(dt){
   player.fireDashCd=Math.max(0,player.fireDashCd-dt);
   player.shockwaveCd=Math.max(0,player.shockwaveCd-dt);
   player.shatterCd=Math.max(0,player.shatterCd-dt);
+  player.gravityCd=Math.max(0,player.gravityCd-dt);
 
   if(player.hpRegen>0 && player.hp>0){
     player.regenTimer-=dt;
@@ -2200,6 +2339,8 @@ function updatePlayer(dt){
   if(!swb.hidden) swb.style.opacity=player.shockwaveCd>0?"0.45":"1";
   const shb=document.getElementById("shatterBtn");
   if(!shb.hidden) shb.style.opacity=player.shatterCd>0?"0.45":"1";
+  const grb=document.getElementById("gravityBtn");
+  if(!grb.hidden) grb.style.opacity=player.gravityCd>0?"0.45":"1";
 
   camera.x=player.x-viewW/2;
   camera.y=player.y-viewH/2;
